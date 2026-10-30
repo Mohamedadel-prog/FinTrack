@@ -1,0 +1,107 @@
+﻿@model FinTrack.Web.ViewModels.Accounts.CreateAccountViewModel
+@using FinTrack.Domain.Enums
+
+@{
+    ViewData["Title"] = "Create Account";
+}
+
+<div class="ft-form-page">
+
+    <div class="ft-form-header">
+        <span class="ft-eyebrow">ACCOUNTS MANAGEMENT</span>
+        <h1>Create Account</h1>
+
+        <p>
+            Add a new financial account to track your money.
+        </p>
+    </div>
+
+    <div class="ft-form-card">
+
+        <h2 class="ft-form-section-title">
+            Account Information
+        </h2>
+
+        <form asp-action="Create" method="post">
+
+            <div asp-validation-summary="ModelOnly"
+                 class="alert alert-danger"></div>
+
+            <div class="ft-field">
+                <label asp-for="Name"
+                       class="form-label">
+                    Account Name
+                </label>
+
+                <input asp-for="Name"
+                       class="form-control"
+                       placeholder="e.g. Main Wallet" />
+
+                <span asp-validation-for="Name"
+                      class="text-danger"></span>
+
+                <p class="ft-field-hint">
+                    Choose a name that helps you identify this account.
+                </p>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="Type"
+                       class="form-label">
+                    Account Type
+                </label>
+
+                <select asp-for="Type"
+                        asp-items="Html.GetEnumSelectList<AccountType>()"
+                        class="form-select">
+                </select>
+
+                <span asp-validation-for="Type"
+                      class="text-danger"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="OpeningBalance"
+                       class="form-label">
+                    Opening Balance
+                </label>
+
+                <div class="input-group">
+                    <input asp-for="OpeningBalance"
+                           type="number"
+                           step="0.01"
+                           class="form-control" />
+
+                    <span class="input-group-text">EGP</span>
+                </div>
+
+                <span asp-validation-for="OpeningBalance"
+                      class="text-danger"></span>
+
+                <p class="ft-field-hint">
+                    The initial amount in your account.
+                    Negative balances are allowed.
+                </p>
+            </div>
+
+            <div class="ft-form-actions">
+
+                <button type="submit"
+                        class="btn btn-primary">
+                    Create Account
+                </button>
+
+                <a asp-action="Index"
+                   class="btn ft-btn-cancel">
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

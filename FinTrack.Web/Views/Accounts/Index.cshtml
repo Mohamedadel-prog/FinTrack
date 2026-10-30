@@ -1,0 +1,180 @@
+﻿@model IReadOnlyList<FinTrack.Application.Accounts.DTOs.AccountDto>
+
+@{
+    ViewData["Title"] = "My Accounts";
+
+    var totalBalance = Model.Sum(a => a.CurrentBalance);
+    var accountCount = Model.Count;
+}
+
+<div class="ft-accounts-page">
+
+    <!-- Page Header -->
+    <div class="ft-page-header">
+
+        <div>
+            <span class="ft-eyebrow">FINANCIAL OVERVIEW</span>
+            <h1>My Accounts</h1>
+
+            <p>
+                Manage your wallets, bank accounts,
+                and financial balances.
+            </p>
+        </div>
+
+        <a asp-action="Create"
+           class="btn btn-primary">
+            + Add Account
+        </a>
+
+    </div>
+
+    <!-- Success Message -->
+    @if (TempData["SuccessMessage"] is string message)
+    {
+        <div class="alert alert-success mb-4" role="status">
+            @message
+        </div>
+    }
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-6">
+            <div class="ft-summary-card">
+                <span class="ft-summary-label">
+                    TOTAL BALANCE
+                </span>
+
+                <h2 class="@(totalBalance < 0 ? "text-danger" : "")">
+                    @totalBalance.ToString("N2")
+                    <small>EGP</small>
+                </h2>
+
+                <p>Combined balance across your active accounts</p>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="ft-summary-card">
+                <span class="ft-summary-label">
+                    ACTIVE ACCOUNTS
+                </span>
+
+                <h2>@accountCount</h2>
+
+                <p>Your currently active financial accounts</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Section Header -->
+    <div class="ft-section-header">
+        <div>
+            <h2>Your Accounts</h2>
+            <p>Keep track of every balance in one place.</p>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <!-- Empty State -->
+        <div class="ft-empty-state">
+            <div class="ft-empty-icon">+</div>
+
+            <h3>No accounts yet</h3>
+
+            <p>
+                Create your first financial account
+                to start tracking your money.
+            </p>
+
+            <a asp-action="Create"
+               class="btn btn-primary">
+                Create Your First Account
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- Accounts Grid -->
+        <div class="row g-4">
+
+            @foreach (var account in Model)
+            {
+                <div class="col-md-6 col-xl-4">
+
+                    <div class="ft-account-card">
+
+                        <div class="ft-account-top">
+                            <span class="ft-account-type">
+                                @account.Type
+                            </span>
+
+                            <span class="ft-account-currency">
+                                @account.Currency
+                            </span>
+                        </div>
+
+                        <h3 class="ft-account-name">
+                            @account.Name
+                        </h3>
+
+                        <div class="ft-account-balance">
+                            <span>Current Balance</span>
+
+                            <h2 class="@(account.CurrentBalance < 0 ? "text-danger" : "")">
+                                @account.CurrentBalance.ToString("N2")
+                                <small>@account.Currency</small>
+                            </h2>
+                        </div>
+
+                        <div class="ft-account-opening">
+                            <span>Opening Balance</span>
+
+                            <strong>
+                                @account.OpeningBalance.ToString("N2")
+                                @account.Currency
+                            </strong>
+                        </div>
+
+                        @if (account.CurrentBalance < 0)
+                        {
+                            <div class="ft-negative-warning">
+                                Negative balance
+                            </div>
+                        }
+
+                        <!-- Account Actions -->
+                        <div class="ft-account-actions">
+
+                            <a asp-action="Edit"
+                               asp-route-id="@account.Id"
+                               class="btn btn-outline-primary btn-sm">
+                                Edit Account
+                            </a>
+
+                            <form asp-action="Archive"
+                                  asp-route-id="@account.Id"
+                                  method="post"
+                                  class="m-0"
+                                  onsubmit="return confirm('Are you sure you want to archive this account?');">
+
+                                <button type="submit"
+                                        class="btn btn-outline-danger btn-sm">
+                                    Archive
+                                </button>
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+
+</div>

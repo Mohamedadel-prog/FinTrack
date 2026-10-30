@@ -1,0 +1,96 @@
+﻿@model IReadOnlyList<FinTrack.Application.Categories.DTOs.CategoryDto>
+@using FinTrack.Domain.Enums
+
+@{
+    ViewData["Title"] = "My Categories";
+}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Categories</h2>
+
+        <a asp-action="Create" class="btn btn-primary">
+            + Add Category
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] is string message)
+    {
+        <div class="alert alert-success">
+            @message
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            You don't have any categories yet.
+        </div>
+    }
+    else
+    {
+        <div class="ft-data-card">
+            <div class="card-body">
+
+                <table class="table ft-data-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var category in Model)
+                        {
+                            <tr>
+                                <td>@category.Name</td>
+
+                                <td>
+                                    @if (category.Type == CategoryType.Income)
+                                    {
+                                        <span class="badge bg-success">
+                                            Income
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">
+                                            Expense
+                                        </span>
+                                    }
+                                </td>
+
+                                <td>
+                                    <div class="d-flex gap-2">
+
+                                        <a asp-action="Edit"
+                                           asp-route-id="@category.Id"
+                                           class="btn btn-outline-primary btn-sm">
+                                            Edit
+                                        </a>
+
+                                        <form asp-action="Archive"
+                                              asp-route-id="@category.Id"
+                                              method="post"
+                                              onsubmit="return confirm('Archive this category?');">
+
+                                            <button type="submit"
+                                                    class="btn btn-outline-danger btn-sm">
+                                                Archive
+                                            </button>
+                                        </form>
+
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    }
+</div>
