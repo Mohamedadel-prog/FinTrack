@@ -6,5 +6,6 @@ namespace FinTrack.Application.Accounts.DTOs;
 public sealed record CreateAccountRequest(
     string Name,
     AccountType Type,
-    decimal OpeningBalance
+    decimal OpeningBalance,
+    string Currency
 );

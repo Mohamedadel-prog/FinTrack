@@ -1,4 +1,5 @@
 ﻿
+using FinTrack.Domain.Common;
 using FinTrack.Domain.Enums;
 
 namespace FinTrack.Domain.Entities;
@@ -17,7 +18,7 @@ public class Account
 
     public decimal OpeningBalance { get; private set; }
 
-    public string Currency { get; private set; } = "EGP";
+    public string Currency { get; private set; } = Currencies.Default;
 
     public bool IsArchived { get; private set; }
 
@@ -27,7 +28,8 @@ public class Account
         string userId,
         string name,
         AccountType type,
-        decimal openingBalance)
+        decimal openingBalance,
+        string currency = Currencies.Default)
     {
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException(
@@ -41,6 +43,7 @@ public class Account
         Name = ValidateName(name);
         Type = type;
         OpeningBalance = openingBalance;
+        Currency = ValidateCurrency(currency);
         IsArchived = false;
     }
 
@@ -61,9 +64,28 @@ public class Account
         Type = newType;
     }
 
+    public void ChangeCurrency(string newCurrency)
+    {
+        EnsureNotArchived();
+        Currency = ValidateCurrency(newCurrency);
+    }
+
     public void Archive()
     {
+        if (IsArchived)
+            throw new InvalidOperationException(
+                "Account is already archived.");
+
         IsArchived = true;
+    }
+
+    public void Unarchive()
+    {
+        if (!IsArchived)
+            throw new InvalidOperationException(
+                "Account is not archived.");
+
+        IsArchived = false;
     }
 
     private void EnsureNotArchived()
@@ -87,5 +109,16 @@ public class Account
                 nameof(name));
 
         return trimmedName;
+    }
+
+    private static string ValidateCurrency(string currency)
+    {
+        var code = currency?.Trim().ToUpperInvariant();
+
+        if (!Currencies.IsSupported(code))
+            throw new ArgumentException(
+                "Unsupported currency.", nameof(currency));
+
+        return code!;
     }
 }

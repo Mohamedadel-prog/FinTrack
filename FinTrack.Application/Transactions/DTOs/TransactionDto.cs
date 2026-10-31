@@ -12,5 +12,7 @@ public sealed record TransactionDto(
     decimal Amount,
     TransactionType Type,
     DateTime TransactionDate,
-    string? Note
+    string? Note,
+    string Currency,
+    bool CategoryIsArchived
 );

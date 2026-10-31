@@ -1,0 +1,65 @@
+@model IReadOnlyList<FinTrack.Application.Accounts.DTOs.AccountDto>
+@using FinTrack.Domain.Enums
+
+@{
+    ViewData["Title"] = "Archived accounts";
+    ViewData["Subtitle"] = "Restore an account to bring back its transactions and balance";
+}
+
+<div class="ft-page-head">
+    <a asp-action="Index" class="ft-btn ft-btn-ghost ft-btn-sm">← Back to accounts</a>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="ft-card ft-empty">
+        <h3>No archived accounts</h3>
+        <p>Accounts you archive will show up here so you can restore them later.</p>
+        <a asp-action="Index" class="ft-btn ft-btn-primary">Back to accounts</a>
+    </div>
+}
+else
+{
+    <section class="ft-card">
+        <div class="ft-table-wrap">
+            <table class="ft-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Account</th>
+                        <th scope="col">Type</th>
+                        <th scope="col" class="ft-right">Balance</th>
+                        <th scope="col" class="ft-right"><span class="ft-sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var account in Model)
+                    {
+                        var typeLabel = account.Type switch
+                        {
+                            AccountType.Cash => "Cash",
+                            AccountType.Bank => "Bank account",
+                            AccountType.EWallet => "E-wallet",
+                            _ => account.Type.ToString()
+                        };
+
+                        <tr>
+                            <td class="ft-cell-main">@account.Name</td>
+                            <td class="ft-muted">@typeLabel</td>
+                            <td class="ft-right ft-num @(account.CurrentBalance < 0 ? "ft-danger-text" : "")">
+                                @account.CurrentBalance.ToString("N2") @account.Currency
+                            </td>
+                            <td class="ft-right">
+                                <form asp-action="Unarchive"
+                                      asp-route-id="@account.Id"
+                                      method="post"
+                                      class="ft-inline-form">
+                                    <button type="submit" class="ft-btn ft-btn-ghost ft-btn-sm">Restore</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}

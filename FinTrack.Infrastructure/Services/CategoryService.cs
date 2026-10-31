@@ -3,6 +3,7 @@ using FinTrack.Application.Categories.DTOs;
 using FinTrack.Application.Categories.Interfaces;
 using FinTrack.Domain.Entities;
 using FinTrack.Infrastructure.Persistence;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinTrack.Infrastructure.Services;
@@ -40,7 +41,7 @@ public sealed class CategoryService : ICategoryService
 
         _context.Categories.Add(category);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await SaveChangesAsync(cancellationToken);
 
         return category.Id;
     }
@@ -118,7 +119,7 @@ public sealed class CategoryService : ICategoryService
 
         category.Rename(normalizedName);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await SaveChangesAsync(cancellationToken);
 
         return true;
     }
@@ -143,5 +144,23 @@ public sealed class CategoryService : ICategoryService
         await _context.SaveChangesAsync(cancellationToken);
 
         return true;
+    }
+
+    // The pre-check above can race with a concurrent request; the filtered
+    // unique index is the real guard, so map its violation to the same error.
+    private async Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+        {
+            _context.ChangeTracker.Clear();
+
+            throw new InvalidOperationException(
+                "A category with this name and type already exists.", ex);
+        }
     }
 }

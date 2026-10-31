@@ -28,6 +28,8 @@ public class EditTransactionViewModel
 
     public string AccountName { get; set; } = string.Empty;
 
+    public string Currency { get; set; } = string.Empty;
+
     public TransactionType Type { get; set; }
 
     public List<SelectListItem> Categories { get; set; } = [];

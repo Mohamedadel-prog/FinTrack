@@ -1,0 +1,40 @@
+@model FinTrack.Application.Common.IPagedList
+
+@{
+    // Keep the current filters in every page link and only swap the page number
+    string PageUrl(int page)
+    {
+        var query = Context.Request.Query
+            .Where(q => !q.Key.Equals("page", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(q => q.Key, q => (string?)q.Value.ToString());
+
+        query["page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(
+            Context.Request.Path, query);
+    }
+
+    var first = Model.TotalCount == 0 ? 0 : (Model.Page - 1) * Model.PageSize + 1;
+    var last = Math.Min(Model.Page * Model.PageSize, Model.TotalCount);
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="ft-pager" aria-label="Pagination">
+        <span class="ft-muted">@first–@last of @Model.TotalCount</span>
+
+        <div class="ft-pager-links">
+            @if (Model.Page > 1)
+            {
+                <a class="ft-btn ft-btn-ghost ft-btn-sm" href="@PageUrl(Model.Page - 1)" rel="prev">← Previous</a>
+            }
+
+            <span class="ft-pager-current">Page @Model.Page of @Model.TotalPages</span>
+
+            @if (Model.Page < Model.TotalPages)
+            {
+                <a class="ft-btn ft-btn-ghost ft-btn-sm" href="@PageUrl(Model.Page + 1)" rel="next">Next →</a>
+            }
+        </div>
+    </nav>
+}

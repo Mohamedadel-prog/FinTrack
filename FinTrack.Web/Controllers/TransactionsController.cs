@@ -36,13 +36,53 @@ public class TransactionsController : Controller
 
     [HttpGet]
     public async Task<IActionResult> Index(
+        [FromQuery] TransactionIndexViewModel model,
         CancellationToken cancellationToken)
     {
-        var transactions = await _transactionService.GetAllAsync(
+        // Ignore malformed filter values instead of failing the page
+        if (model.Type is { } type && !Enum.IsDefined(type))
+            model.Type = null;
+
+        if (model.From > model.To)
+            (model.From, model.To) = (model.To, model.From);
+
+        model.Result = await _transactionService.GetPagedAsync(
+            CurrentUserId,
+            new TransactionFilter(
+                model.From,
+                model.To,
+                model.AccountId,
+                model.CategoryId,
+                model.Type,
+                model.Search,
+                model.Page),
+            cancellationToken);
+
+        var accounts = await _accountService.GetAllAsync(
             CurrentUserId,
             cancellationToken);
 
-        return View(transactions);
+        var categories = await _categoryService.GetAllAsync(
+            CurrentUserId,
+            cancellationToken);
+
+        model.Accounts = accounts
+            .Select(a => new SelectListItem
+            {
+                Value = a.Id.ToString(CultureInfo.InvariantCulture),
+                Text = a.Name
+            })
+            .ToList();
+
+        model.Categories = categories
+            .Select(c => new SelectListItem
+            {
+                Value = c.Id.ToString(CultureInfo.InvariantCulture),
+                Text = $"{c.Name} ({c.Type})"
+            })
+            .ToList();
+
+        return View(model);
     }
 
     [HttpGet]
@@ -138,9 +178,12 @@ public class TransactionsController : Controller
             .Select(a => new SelectListItem
             {
                 Value = a.Id.ToString(CultureInfo.InvariantCulture),
-                Text = $"{a.Name} ({a.Type})"
+                Text = $"{a.Name} ({a.Type} · {a.Currency})"
             })
             .ToList();
+
+        model.AccountCurrencies = accounts
+            .ToDictionary(a => a.Id, a => a.Currency);
 
         model.Categories = categories
             .Where(c =>
@@ -203,10 +246,11 @@ public class TransactionsController : Controller
             TransactionDate = transaction.TransactionDate,
             Note = transaction.Note,
             AccountName = transaction.AccountName,
+            Currency = transaction.Currency,
             Type = transaction.Type
         };
 
-        await PopulateEditCategoriesAsync(model, cancellationToken);
+        await PopulateEditCategoriesAsync(model, transaction, cancellationToken);
 
         return View(model);
     }
@@ -264,9 +308,10 @@ public class TransactionsController : Controller
         }
 
         model.AccountName = existing.AccountName;
+        model.Currency = existing.Currency;
         model.Type = existing.Type;
 
-        await PopulateEditCategoriesAsync(model, cancellationToken);
+        await PopulateEditCategoriesAsync(model, existing, cancellationToken);
 
         return View(model);
     }
@@ -274,6 +319,7 @@ public class TransactionsController : Controller
 
     private async Task PopulateEditCategoriesAsync(
         EditTransactionViewModel model,
+        TransactionDto existing,
         CancellationToken cancellationToken)
     {
         var categories = await _categoryService.GetAllAsync(
@@ -288,10 +334,21 @@ public class TransactionsController : Controller
             .Where(c => c.Type == expectedType)
             .Select(c => new SelectListItem
             {
-                Value = c.Id.ToString(),
+                Value = c.Id.ToString(CultureInfo.InvariantCulture),
                 Text = c.Name
             })
             .ToList();
+
+        // Keep the transaction's current category selectable even if it
+        // has been archived since, so editing doesn't force a change.
+        if (existing.CategoryIsArchived)
+        {
+            model.Categories.Insert(0, new SelectListItem
+            {
+                Value = existing.CategoryId.ToString(CultureInfo.InvariantCulture),
+                Text = $"{existing.CategoryName} (archived)"
+            });
+        }
     }
 
 

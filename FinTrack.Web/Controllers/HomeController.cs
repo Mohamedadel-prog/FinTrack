@@ -23,6 +23,7 @@ namespace FinTrack.Web.Controllers
 
         [Authorize]
         public async Task<IActionResult> Index(
+            string? currency,
             CancellationToken cancellationToken)
         {
             var userId = User.FindFirstValue(
@@ -34,17 +35,13 @@ namespace FinTrack.Web.Controllers
             var dashboard = await _dashboardService.GetDashboardAsync(
                 userId,
                 DateTime.Today,
+                currency,
                 cancellationToken);
 
             return View(dashboard);
         }
 
 
-        [HttpGet]
-        public IActionResult AccessDenied()
-        {
-            return View();
-        }
         public IActionResult Privacy()
         {
             return View();

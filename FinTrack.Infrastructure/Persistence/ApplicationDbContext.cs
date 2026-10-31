@@ -17,6 +17,12 @@ public class ApplicationDbContext
 
     public DbSet<Account> Accounts => Set<Account>();
 
+    public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<Transaction> Transactions => Set<Transaction>();
+
+    public DbSet<Transfer> Transfers => Set<Transfer>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -24,6 +30,4 @@ public class ApplicationDbContext
         builder.ApplyConfigurationsFromAssembly(
             typeof(ApplicationDbContext).Assembly);
     }
-    public DbSet<Category> Categories => Set<Category>();
-    public DbSet<Transaction> Transactions => Set<Transaction>();
 }

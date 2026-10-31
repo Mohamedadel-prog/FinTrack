@@ -8,5 +8,6 @@ public interface IDashboardService
     Task<DashboardDto> GetDashboardAsync(
         string userId,
         DateTime today,
+        string? currency = null,
         CancellationToken cancellationToken = default);
 }

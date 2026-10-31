@@ -1,0 +1,79 @@
+@model FinTrack.Application.Common.PagedResult<FinTrack.Application.Transfers.DTOs.TransferDto>
+
+@{
+    ViewData["Title"] = "Transfers";
+    ViewData["Subtitle"] = $"{Model.TotalCount} {(Model.TotalCount == 1 ? "transfer" : "transfers")} between your accounts";
+}
+
+@if (TempData["SuccessMessage"] is string message)
+{
+    <div class="ft-alert ft-alert-success" role="status">@message</div>
+}
+
+<div class="ft-page-head">
+    <h2 style="font-size:16px;font-weight:700">Transfer history</h2>
+    <a asp-action="Create" class="ft-btn ft-btn-primary ft-btn-sm">New transfer</a>
+</div>
+
+@if (Model.TotalCount == 0)
+{
+    <div class="ft-card ft-empty">
+        <div class="ft-empty-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4" /><path d="M3 8h14" /><path d="m17 20 4-4-4-4" /><path d="M21 16H7" /></svg>
+        </div>
+        <h3>No transfers yet</h3>
+        <p>Moving cash to your bank or topping up an e-wallet? Record it as a transfer.</p>
+        <a asp-action="Create" class="ft-btn ft-btn-primary">Make a transfer</a>
+    </div>
+}
+else
+{
+    <section class="ft-card">
+        <div class="ft-table-wrap">
+            <table class="ft-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">From</th>
+                        <th scope="col">To</th>
+                        <th scope="col" class="ft-right">Amount</th>
+                        <th scope="col" class="ft-right"><span class="ft-sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var transfer in Model.Items)
+                    {
+                        <tr>
+                            <td class="ft-muted">@transfer.TransferDate.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <span class="ft-cell-main">@transfer.FromAccountName</span>
+                                @if (!string.IsNullOrWhiteSpace(transfer.Note))
+                                {
+                                    <span class="ft-cell-sub" title="@transfer.Note">@transfer.Note</span>
+                                }
+                            </td>
+                            <td>@transfer.ToAccountName</td>
+                            <td class="ft-right ft-num">@transfer.Amount.ToString("N2") @transfer.Currency</td>
+                            <td class="ft-right">
+                                <form asp-action="Delete"
+                                      asp-route-id="@transfer.Id"
+                                      method="post"
+                                      class="ft-inline-form"
+                                      onsubmit="return confirm('Delete this transfer? Both account balances will be updated.');">
+                                    <button type="submit"
+                                            class="ft-icon-btn is-danger"
+                                            aria-label="Delete transfer"
+                                            title="Delete">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></svg>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pager" model="Model" />
+    </section>
+}

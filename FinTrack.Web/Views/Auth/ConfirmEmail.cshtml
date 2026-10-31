@@ -1,0 +1,30 @@
+@{
+    var confirmed = ViewData["Confirmed"] is true;
+    ViewData["Title"] = confirmed ? "Email confirmed" : "Link not valid";
+}
+
+<div class="ft-state">
+    <div class="ft-empty-icon">
+        @if (confirmed)
+        {
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        }
+        else
+        {
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
+        }
+    </div>
+
+    @if (confirmed)
+    {
+        <h1>Email confirmed</h1>
+        <p>Your account is active. You can sign in now.</p>
+        <a asp-action="Login" class="ft-btn ft-btn-primary">Sign in</a>
+    }
+    else
+    {
+        <h1>This link isn't valid</h1>
+        <p>The confirmation link is invalid or has expired. Request a new one below.</p>
+        <a asp-action="ResendConfirmation" class="ft-btn ft-btn-primary">Send a new link</a>
+    }
+</div>

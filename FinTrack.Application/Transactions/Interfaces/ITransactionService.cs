@@ -10,8 +10,9 @@ public interface ITransactionService
         CreateTransactionRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<TransactionDto>> GetAllAsync(
+    Task<TransactionListResult> GetPagedAsync(
         string userId,
+        TransactionFilter filter,
         CancellationToken cancellationToken = default);
 
     Task<bool> SoftDeleteAsync(

@@ -1,110 +1,170 @@
-﻿@model IReadOnlyList<FinTrack.Application.Transactions.DTOs.TransactionDto>
+@model FinTrack.Web.ViewModels.Transactions.TransactionIndexViewModel
 @using FinTrack.Domain.Enums
+@using System.Globalization
 
 @{
+    var page = Model.Result.Transactions;
+    var totals = Model.Result.Totals;
+
     ViewData["Title"] = "Transactions";
+    ViewData["Subtitle"] = Model.HasFilters
+        ? $"{page.TotalCount} matching {(page.TotalCount == 1 ? "transaction" : "transactions")}"
+        : $"{page.TotalCount} {(page.TotalCount == 1 ? "transaction" : "transactions")} recorded";
+
+    var periodLabel = Model.HasFilters ? "matching filters" : "all time";
 }
 
-<div class="container mt-4">
+@if (TempData["SuccessMessage"] is string message)
+{
+    <div class="ft-alert ft-alert-success" role="status">@message</div>
+}
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Transactions</h2>
-
-        <a asp-action="Create" class="btn btn-primary">
-            + Add Transaction
-        </a>
+@if (page.TotalCount == 0 && !Model.HasFilters)
+{
+    <div class="ft-card ft-empty">
+        <div class="ft-empty-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4" /><path d="M3 8h14" /><path d="m17 20 4-4-4-4" /><path d="M21 16H7" /></svg>
+        </div>
+        <h3>No transactions yet</h3>
+        <p>Record an income or an expense and it will show up here.</p>
+        <a asp-action="Create" class="ft-btn ft-btn-primary">Add transaction</a>
     </div>
-
-    @if (TempData["SuccessMessage"] is string message)
+}
+else
+{
+    @if (totals.Any())
     {
-        <div class="alert alert-success">
-            @message
-        </div>
-    }
-
-    @if (!Model.Any())
-    {
-        <div class="alert alert-info">
-            No transactions yet.
-        </div>
-    }
-    else
-    {
-        <div class="ft-data-card">
-            <div class="card-body">
-
-                <div class="table-responsive">
-                    <table class="table ft-data-table align-middle">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Account</th>
-                                <th>Category</th>
-                                <th>Type</th>
-                                <th>Amount</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach (var transaction in Model)
-                            {
-                                <tr>
-                                    <td>
-                                        @transaction.TransactionDate.ToString("dd MMM yyyy")
-                                    </td>
-
-                                    <td>@transaction.AccountName</td>
-
-                                    <td>@transaction.CategoryName</td>
-
-                                    <td>
-                                        @if (transaction.Type == TransactionType.Income)
-                                        {
-                                            <span class="badge bg-success">
-                                                Income
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-danger">
-                                                Expense
-                                            </span>
-                                        }
-                                    </td>
-
-                                    <td>
-                                        <span class="fw-bold @(transaction.Type == TransactionType.Income ? "text-success" : "text-danger")">
-                                            @(transaction.Type == TransactionType.Income ? "+" : "-")
-                                            @transaction.Amount.ToString("N2") EGP
-                                        </span>
-                                    </td>
-                                    
-
-                                    <td>
-                                        <div class="d-flex gap-2">
-                                            <a asp-action="Edit"
-                                               asp-route-id="@transaction.Id"
-                                               class="btn btn-outline-primary btn-sm">
-                                                Edit
-                                            </a>
-                                            <form asp-action="Delete"
-                                                  asp-route-id="@transaction.Id"
-                                                  method="post"
-                                                  onsubmit="return confirm('Are you sure you want to delete this transaction?');">
-                                                <button type="submit"
-                                                        class="btn btn-outline-danger btn-sm">
-                                                    Delete
-                                                </button>
-                                            </form>
-                                        </div>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+        <section class="ft-stat-grid" aria-label="Totals">
+            @foreach (var total in totals)
+            {
+                <div class="ft-card ft-stat">
+                    <span class="ft-label">Total income · @total.Currency</span>
+                    <span class="ft-num ft-stat-value ft-pos" data-count="@total.Income.ToString(CultureInfo.InvariantCulture)" data-prefix="+">+@total.Income.ToString("N2")</span>
+                    <span class="ft-stat-foot">@total.Currency · @periodLabel</span>
                 </div>
-
-            </div>
-        </div>
+                <div class="ft-card ft-stat">
+                    <span class="ft-label">Total expenses · @total.Currency</span>
+                    <span class="ft-num ft-stat-value ft-neg" data-count="@total.Expenses.ToString(CultureInfo.InvariantCulture)" data-prefix="−">−@total.Expenses.ToString("N2")</span>
+                    <span class="ft-stat-foot">@total.Currency · @periodLabel</span>
+                </div>
+            }
+        </section>
     }
-</div>
+
+    <section class="ft-card">
+        <form method="get" asp-action="Index" class="ft-filter-bar" role="search" aria-label="Filter transactions">
+            <div class="ft-field">
+                <label asp-for="From">From</label>
+                <input asp-for="From" type="date" class="ft-input" />
+            </div>
+            <div class="ft-field">
+                <label asp-for="To">To</label>
+                <input asp-for="To" type="date" class="ft-input" />
+            </div>
+            <div class="ft-field">
+                <label asp-for="AccountId">Account</label>
+                <select asp-for="AccountId" asp-items="Model.Accounts" class="ft-select">
+                    <option value="">All accounts</option>
+                </select>
+            </div>
+            <div class="ft-field">
+                <label asp-for="CategoryId">Category</label>
+                <select asp-for="CategoryId" asp-items="Model.Categories" class="ft-select">
+                    <option value="">All categories</option>
+                </select>
+            </div>
+            <div class="ft-field">
+                <label asp-for="Type">Type</label>
+                <select asp-for="Type" class="ft-select">
+                    <option value="">All types</option>
+                    <option value="@TransactionType.Income">Income</option>
+                    <option value="@TransactionType.Expense">Expense</option>
+                </select>
+            </div>
+            <div class="ft-field">
+                <label asp-for="Search">Search</label>
+                <input asp-for="Search" type="search" class="ft-input" placeholder="Category, account or note" />
+            </div>
+            <div class="ft-filter-actions">
+                <button type="submit" class="ft-btn ft-btn-primary ft-btn-sm">Apply</button>
+                @if (Model.HasFilters)
+                {
+                    <a asp-action="Index" class="ft-btn ft-btn-ghost ft-btn-sm">Clear</a>
+                }
+            </div>
+        </form>
+
+        @if (page.TotalCount == 0)
+        {
+            <p class="ft-empty-inline">No transactions match these filters.</p>
+        }
+        else
+        {
+            <div class="ft-table-wrap">
+                <table class="ft-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Account</th>
+                            <th scope="col">Type</th>
+                            <th scope="col" class="ft-right">Amount</th>
+                            <th scope="col" class="ft-right"><span class="ft-sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var transaction in page.Items)
+                        {
+                            var isIncome = transaction.Type == TransactionType.Income;
+
+                            <tr>
+                                <td class="ft-muted">@transaction.TransactionDate.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <span class="ft-cell-main">@transaction.CategoryName</span>
+                                    @if (!string.IsNullOrWhiteSpace(transaction.Note))
+                                    {
+                                        <span class="ft-cell-sub" title="@transaction.Note">@transaction.Note</span>
+                                    }
+                                </td>
+                                <td>@transaction.AccountName</td>
+                                <td>
+                                    <span class="ft-pill @(isIncome ? "ft-pill-income" : "ft-pill-expense")">
+                                        @(isIncome ? "Income" : "Expense")
+                                    </span>
+                                </td>
+                                <td class="ft-right ft-num @(isIncome ? "ft-pos" : "")">
+                                    @(isIncome ? "+" : "−")@transaction.Amount.ToString("N2") <span class="ft-muted">@transaction.Currency</span>
+                                </td>
+                                <td class="ft-right">
+                                    <div class="ft-actions">
+                                        <a asp-action="Edit"
+                                           asp-route-id="@transaction.Id"
+                                           class="ft-icon-btn"
+                                           aria-label="Edit transaction"
+                                           title="Edit">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                                        </a>
+                                        <form asp-action="Delete"
+                                              asp-route-id="@transaction.Id"
+                                              method="post"
+                                              class="ft-inline-form"
+                                              onsubmit="return confirm('Delete this transaction?');">
+                                            <button type="submit"
+                                                    class="ft-icon-btn is-danger"
+                                                    aria-label="Delete transaction"
+                                                    title="Delete">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <partial name="_Pager" model="page" />
+        }
+    </section>
+}

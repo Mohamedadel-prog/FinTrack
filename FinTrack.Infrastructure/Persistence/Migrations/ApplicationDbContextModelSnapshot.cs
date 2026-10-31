@@ -153,6 +153,59 @@ namespace FinTrack.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FinTrack.Domain.Entities.Transfer", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FromAccountId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("ToAccountId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("TransferDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromAccountId");
+
+                    b.HasIndex("ToAccountId");
+
+                    b.HasIndex("UserId", "TransferDate");
+
+                    b.ToTable("Transfers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Transfers_Amount_Positive", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Transfers_DifferentAccounts", "[FromAccountId] <> [ToAccountId]");
+                        });
+                });
+
             modelBuilder.Entity("FinTrack.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -384,6 +437,27 @@ namespace FinTrack.Infrastructure.Persistence.Migrations
                     b.HasOne("FinTrack.Domain.Entities.Category", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinTrack.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinTrack.Domain.Entities.Transfer", b =>
+                {
+                    b.HasOne("FinTrack.Domain.Entities.Account", null)
+                        .WithMany()
+                        .HasForeignKey("FromAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinTrack.Domain.Entities.Account", null)
+                        .WithMany()
+                        .HasForeignKey("ToAccountId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

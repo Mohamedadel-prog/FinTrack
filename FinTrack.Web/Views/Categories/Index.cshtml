@@ -1,96 +1,94 @@
-﻿@model IReadOnlyList<FinTrack.Application.Categories.DTOs.CategoryDto>
+@model IReadOnlyList<FinTrack.Application.Categories.DTOs.CategoryDto>
 @using FinTrack.Domain.Enums
 
 @{
-    ViewData["Title"] = "My Categories";
+    ViewData["Title"] = "Categories";
+    ViewData["Subtitle"] = "Group your income and expenses";
+
+    var groups = new[]
+    {
+        (Type: CategoryType.Expense, Title: "Expense categories", Pill: "ft-pill-expense",
+            Items: Model.Where(c => c.Type == CategoryType.Expense).ToList()),
+        (Type: CategoryType.Income, Title: "Income categories", Pill: "ft-pill-income",
+            Items: Model.Where(c => c.Type == CategoryType.Income).ToList())
+    };
 }
 
-<div class="container mt-4">
+@if (TempData["SuccessMessage"] is string message)
+{
+    <div class="ft-alert ft-alert-success" role="status">@message</div>
+}
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>My Categories</h2>
-
-        <a asp-action="Create" class="btn btn-primary">
-            + Add Category
-        </a>
-    </div>
-
-    @if (TempData["SuccessMessage"] is string message)
-    {
-        <div class="alert alert-success">
-            @message
-        </div>
-    }
-
-    @if (!Model.Any())
-    {
-        <div class="alert alert-info">
-            You don't have any categories yet.
-        </div>
-    }
-    else
-    {
-        <div class="ft-data-card">
-            <div class="card-body">
-
-                <table class="table ft-data-table align-middle">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        @foreach (var category in Model)
-                        {
-                            <tr>
-                                <td>@category.Name</td>
-
-                                <td>
-                                    @if (category.Type == CategoryType.Income)
-                                    {
-                                        <span class="badge bg-success">
-                                            Income
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-danger">
-                                            Expense
-                                        </span>
-                                    }
-                                </td>
-
-                                <td>
-                                    <div class="d-flex gap-2">
-
-                                        <a asp-action="Edit"
-                                           asp-route-id="@category.Id"
-                                           class="btn btn-outline-primary btn-sm">
-                                            Edit
-                                        </a>
-
-                                        <form asp-action="Archive"
-                                              asp-route-id="@category.Id"
-                                              method="post"
-                                              onsubmit="return confirm('Archive this category?');">
-
-                                            <button type="submit"
-                                                    class="btn btn-outline-danger btn-sm">
-                                                Archive
-                                            </button>
-                                        </form>
-
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-
-            </div>
-        </div>
-    }
+<div class="ft-page-head">
+    <p>@Model.Count active @(Model.Count == 1 ? "category" : "categories")</p>
+    <a asp-action="Create" class="ft-btn ft-btn-ghost ft-btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        Add category
+    </a>
 </div>
+
+@if (!Model.Any())
+{
+    <div class="ft-card ft-empty">
+        <div class="ft-empty-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z" /><circle cx="8" cy="8" r="1.5" /></svg>
+        </div>
+        <h3>No categories yet</h3>
+        <p>Add categories like Salary, Rent or Groceries so every transaction has a home.</p>
+        <a asp-action="Create" class="ft-btn ft-btn-primary">Create a category</a>
+    </div>
+}
+else
+{
+    <div class="ft-row">
+        @foreach (var group in groups)
+        {
+            <section class="ft-card ft-col-half">
+                <div class="ft-card-head">
+                    <h2>@group.Title</h2>
+                    <span class="ft-pill @group.Pill">@group.Items.Count</span>
+                </div>
+
+                @if (!group.Items.Any())
+                {
+                    <p class="ft-empty-inline">
+                        None yet. <a asp-action="Create">Add one</a>
+                    </p>
+                }
+                else
+                {
+                    <ul class="ft-list">
+                        @foreach (var category in group.Items)
+                        {
+                            <li>
+                                <span class="ft-dot" style="background:@(group.Type == CategoryType.Income ? "var(--ft-accent)" : "var(--ft-expense)")"></span>
+                                <span class="ft-list-name">@category.Name</span>
+                                <div class="ft-actions">
+                                    <a asp-action="Edit"
+                                       asp-route-id="@category.Id"
+                                       class="ft-icon-btn"
+                                       aria-label="Rename @category.Name"
+                                       title="Rename">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                                    </a>
+                                    <form asp-action="Archive"
+                                          asp-route-id="@category.Id"
+                                          method="post"
+                                          class="ft-inline-form"
+                                          onsubmit="return confirm('Archive this category?');">
+                                        <button type="submit"
+                                                class="ft-icon-btn is-danger"
+                                                aria-label="Archive @category.Name"
+                                                title="Archive">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="5" rx="1" /><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" /><path d="M10 12h4" /></svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        }
+    </div>
+}

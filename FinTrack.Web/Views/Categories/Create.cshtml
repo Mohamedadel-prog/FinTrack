@@ -1,72 +1,41 @@
-﻿@model FinTrack.Web.ViewModels.Categories.CreateCategoryViewModel
+@model FinTrack.Web.ViewModels.Categories.CreateCategoryViewModel
 @using FinTrack.Domain.Enums
 
 @{
-    ViewData["Title"] = "Create Category";
+    ViewData["Title"] = "New category";
+    ViewData["Subtitle"] = "Use categories to group your income and expenses";
+    ViewData["HideNewTransaction"] = true;
 }
 
 <div class="ft-form-page">
+    <form asp-action="Create" method="post" class="ft-card ft-form-card">
 
-    <div class="ft-form-header">
-        <span class="ft-eyebrow">CATEGORIES MANAGEMENT</span>
-        <h1>Create Category</h1>
-        <p>Organize your income and expenses.</p>
-    </div>
+        <div asp-validation-summary="ModelOnly"></div>
 
-    <div class="ft-form-card">
+        <fieldset class="ft-field" style="border:0;margin:0;padding:0">
+            <legend class="ft-field-label" style="margin-bottom:8px">Type</legend>
+            <div class="ft-segmented">
+                <input type="radio" asp-for="Type" value="@CategoryType.Expense" id="catExpense" />
+                <label for="catExpense" class="is-expense">Expense</label>
 
-        <h2 class="ft-form-section-title">
-            Category Information
-        </h2>
-
-        <form asp-action="Create" method="post">
-
-            <div asp-validation-summary="ModelOnly"
-                 class="text-danger mb-3"></div>
-
-            <div class="ft-field">
-                <label asp-for="Name"
-                       class="form-label">
-                    Category Name
-                </label>
-
-                <input asp-for="Name"
-                       class="form-control"
-                       placeholder="e.g. Food, Salary, Transport" />
-
-                <span asp-validation-for="Name"
-                      class="text-danger"></span>
+                <input type="radio" asp-for="Type" value="@CategoryType.Income" id="catIncome" />
+                <label for="catIncome" class="is-income">Income</label>
             </div>
+            <span asp-validation-for="Type"></span>
+        </fieldset>
 
-            <div class="ft-field">
-                <label asp-for="Type"
-                       class="form-label">
-                    Category Type
-                </label>
+        <div class="ft-field">
+            <label asp-for="Name">Category name</label>
+            <input asp-for="Name" class="ft-input" placeholder="e.g. Groceries, Salary, Transport" autocomplete="off" />
+            <span asp-validation-for="Name"></span>
+            <span class="ft-hint">The type can't be changed after the category is created.</span>
+        </div>
 
-                <select asp-for="Type"
-                        asp-items="Html.GetEnumSelectList<CategoryType>()"
-                        class="form-select">
-                </select>
-
-                <span asp-validation-for="Type"
-                      class="text-danger"></span>
-            </div>
-
-            <div class="ft-form-actions">
-                <button type="submit"
-                        class="btn btn-primary">
-                    Create Category
-                </button>
-
-                <a asp-action="Index"
-                   class="btn ft-btn-cancel">
-                    Cancel
-                </a>
-            </div>
-
-        </form>
-    </div>
+        <div class="ft-form-actions">
+            <button type="submit" class="ft-btn ft-btn-primary">Create category</button>
+            <a asp-action="Index" class="ft-btn ft-btn-ghost">Cancel</a>
+        </div>
+    </form>
 </div>
 
 @section Scripts {

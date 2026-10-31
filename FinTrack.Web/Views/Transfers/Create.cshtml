@@ -1,0 +1,78 @@
+@model FinTrack.Web.ViewModels.Transfers.CreateTransferViewModel
+
+@{
+    ViewData["Title"] = "New transfer";
+    ViewData["Subtitle"] = "Move money between two of your accounts";
+    ViewData["HideNewTransaction"] = true;
+
+    var currentCurrency = Model.AccountCurrencies.GetValueOrDefault(Model.FromAccountId, "");
+}
+
+<div class="ft-form-page">
+    <form asp-action="Create" method="post" class="ft-card ft-form-card">
+
+        <div asp-validation-summary="ModelOnly"></div>
+        <script type="application/json" id="accountCurrencies">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AccountCurrencies))</script>
+
+        @if (Model.Accounts.Count < 2)
+        {
+            <div class="ft-alert ft-alert-info">
+                You need at least two active accounts to make a transfer.
+                <a asp-controller="Accounts" asp-action="Create">Create an account</a>
+            </div>
+        }
+
+        <div class="ft-form-grid">
+            <div class="ft-field">
+                <label asp-for="FromAccountId">From</label>
+                <select asp-for="FromAccountId" asp-items="Model.Accounts" class="ft-select" data-currency-source>
+                    <option value="0">Select account</option>
+                </select>
+                <span asp-validation-for="FromAccountId"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="ToAccountId">To</label>
+                <select asp-for="ToAccountId" asp-items="Model.Accounts" class="ft-select">
+                    <option value="0">Select account</option>
+                </select>
+                <span asp-validation-for="ToAccountId"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="Amount">Amount</label>
+                <div class="ft-input-group">
+                    <input asp-for="Amount" type="number" min="0.01" step="0.01" class="ft-input ft-num" placeholder="0.00" />
+                    <span class="ft-input-suffix" data-currency-label>@currentCurrency</span>
+                </div>
+                <span asp-validation-for="Amount"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="TransferDate">Date</label>
+                <input asp-for="TransferDate" type="date" class="ft-input" />
+                <span asp-validation-for="TransferDate"></span>
+            </div>
+
+            <div class="ft-field ft-field-full">
+                <label asp-for="Note">Note <span class="ft-muted">(optional)</span></label>
+                <textarea asp-for="Note" class="ft-textarea" rows="3" maxlength="500" placeholder="e.g. ATM withdrawal"></textarea>
+                <span asp-validation-for="Note"></span>
+            </div>
+
+            <p class="ft-hint ft-field-full">
+                Transfers move money between accounts in the same currency. They change account balances
+                but are not counted as income or expenses.
+            </p>
+        </div>
+
+        <div class="ft-form-actions">
+            <button type="submit" class="ft-btn ft-btn-primary">Save transfer</button>
+            <a asp-action="Index" class="ft-btn ft-btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

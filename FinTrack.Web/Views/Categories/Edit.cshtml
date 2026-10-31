@@ -1,73 +1,40 @@
-﻿@model FinTrack.Web.ViewModels.Categories.EditCategoryViewModel
+@model FinTrack.Web.ViewModels.Categories.EditCategoryViewModel
+@using FinTrack.Domain.Enums
 
 @{
-    ViewData["Title"] = "Edit Category";
+    ViewData["Title"] = "Rename category";
+    ViewData["Subtitle"] = "The type stays the same after creation";
+    ViewData["HideNewTransaction"] = true;
+
+    var isIncome = Model.Type == CategoryType.Income;
 }
 
 <div class="ft-form-page">
+    <form asp-action="Edit"
+          asp-route-id="@Model.Id"
+          method="post"
+          class="ft-card ft-form-card">
 
-    <div class="ft-form-header">
-        <span class="ft-eyebrow">CATEGORIES MANAGEMENT</span>
-        <h1>Edit Category</h1>
-        <p>Update your category information.</p>
-    </div>
+        <input asp-for="Id" type="hidden" />
+        <input asp-for="Type" type="hidden" />
 
-    <div class="ft-form-card">
+        <div asp-validation-summary="ModelOnly"></div>
 
-        <h2 class="ft-form-section-title">
-            Category Details
-        </h2>
+        <div>
+            <span class="ft-pill @(isIncome ? "ft-pill-income" : "ft-pill-expense")">@(isIncome ? "Income" : "Expense") category</span>
+        </div>
 
-        <form asp-action="Edit"
-              asp-route-id="@Model.Id"
-              method="post">
+        <div class="ft-field">
+            <label asp-for="Name">Category name</label>
+            <input asp-for="Name" class="ft-input" autocomplete="off" />
+            <span asp-validation-for="Name"></span>
+        </div>
 
-            <input asp-for="Id" type="hidden" />
-
-            <div asp-validation-summary="ModelOnly"
-                 class="text-danger mb-3"></div>
-
-            <div class="ft-field">
-                <label asp-for="Name"
-                       class="form-label">
-                    Category Name
-                </label>
-
-                <input asp-for="Name"
-                       class="form-control" />
-
-                <span asp-validation-for="Name"
-                      class="text-danger"></span>
-            </div>
-
-            <div class="ft-field">
-                <label class="form-label">
-                    Category Type
-                </label>
-
-                <input value="@Model.Type"
-                       class="form-control"
-                       disabled />
-
-                <p class="ft-field-hint">
-                    Category type cannot be changed after creation.
-                </p>
-            </div>
-
-            <div class="ft-form-actions">
-                <button type="submit"
-                        class="btn btn-primary">
-                    Save Changes
-                </button>
-
-                <a asp-action="Index"
-                   class="btn ft-btn-cancel">
-                    Cancel
-                </a>
-            </div>
-
-        </form>
-    </div>
+        <div class="ft-form-actions">
+            <button type="submit" class="ft-btn ft-btn-primary">Save changes</button>
+            <a asp-action="Index" class="ft-btn ft-btn-ghost">Cancel</a>
+        </div>
+    </form>
 </div>
 
 @section Scripts {

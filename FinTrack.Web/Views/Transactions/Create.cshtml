@@ -1,161 +1,124 @@
-﻿@model FinTrack.Web.ViewModels.Transactions.CreateTransactionViewModel
+@model FinTrack.Web.ViewModels.Transactions.CreateTransactionViewModel
 @using FinTrack.Domain.Enums
 
 @{
-    ViewData["Title"] = "Add Transaction";
+    ViewData["Title"] = "New transaction";
+    ViewData["Subtitle"] = "Record an income or an expense";
+    ViewData["HideNewTransaction"] = true;
 }
 
 <div class="ft-form-page">
+    <form asp-action="Create" method="post" class="ft-card ft-form-card">
 
-    <h2>Add Transaction</h2>
+        <div asp-validation-summary="ModelOnly"></div>
+        <script type="application/json" id="accountCurrencies">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AccountCurrencies))</script>
 
-    <p class="text-muted">
-        Record your income or expense.
-    </p>
+        <fieldset class="ft-field" style="border:0;margin:0;padding:0">
+            <legend class="ft-field-label" style="margin-bottom:8px">Type</legend>
+            <div class="ft-segmented">
+                <input type="radio" asp-for="Type" value="@TransactionType.Expense" id="typeExpense" />
+                <label for="typeExpense" class="is-expense">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>
+                    Expense
+                </label>
 
-    <div class="ft-form-card">
-        <div class="card-body">
+                <input type="radio" asp-for="Type" value="@TransactionType.Income" id="typeIncome" />
+                <label for="typeIncome" class="is-income">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></svg>
+                    Income
+                </label>
+            </div>
+            <span asp-validation-for="Type"></span>
+        </fieldset>
 
-            <form asp-action="Create" method="post">
-
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger mb-3"></div>
-
-                <div class="mb-3">
-                    <label asp-for="Type"
-                           class="form-label"></label>
-
-                    <select asp-for="Type"
-                            asp-items="Html.GetEnumSelectList<TransactionType>()"
-                            class="form-select"
-                            id="transactionType">
-                    </select>
-
-                    <span asp-validation-for="Type"
-                          class="text-danger"></span>
+        <div class="ft-form-grid">
+            <div class="ft-field ft-field-full">
+                <label asp-for="Amount">Amount</label>
+                <div class="ft-input-group">
+                    <input asp-for="Amount" type="number" min="0.01" step="0.01" class="ft-input ft-num" placeholder="0.00" />
+                    <span class="ft-input-suffix" data-currency-label></span>
                 </div>
+                <span asp-validation-for="Amount"></span>
+            </div>
 
-                <div class="ft-field">
-                    <label asp-for="AccountId"
-                           class="form-label"></label>
+            <div class="ft-field">
+                <label asp-for="AccountId">Account</label>
+                <select asp-for="AccountId" asp-items="Model.Accounts" class="ft-select" data-currency-source>
+                    <option value="0">Select account</option>
+                </select>
+                <span asp-validation-for="AccountId"></span>
+                @if (!Model.Accounts.Any())
+                {
+                    <span class="ft-hint">No accounts yet — <a asp-controller="Accounts" asp-action="Create">create one</a> first.</span>
+                }
+            </div>
 
-                    <select asp-for="AccountId"
-                            asp-items="Model.Accounts"
-                            class="form-select">
-                        <option value="0">Select account</option>
-                    </select>
+            <div class="ft-field">
+                <label asp-for="CategoryId">Category</label>
+                <select asp-for="CategoryId" asp-items="Model.Categories" class="ft-select" id="categorySelect">
+                    <option value="0">Select category</option>
+                </select>
+                <span asp-validation-for="CategoryId"></span>
+                <span class="ft-hint">Missing one? <a asp-controller="Categories" asp-action="Create">Add a category</a></span>
+            </div>
 
-                    <span asp-validation-for="AccountId"
-                          class="text-danger"></span>
-                </div>
+            <div class="ft-field">
+                <label asp-for="TransactionDate">Date</label>
+                <input asp-for="TransactionDate" type="date" class="ft-input" />
+                <span asp-validation-for="TransactionDate"></span>
+            </div>
 
-                <div class="ft-field">
-                    <label asp-for="CategoryId"
-                           class="form-label"></label>
-
-                    <select asp-for="CategoryId"
-                            asp-items="Model.Categories"
-                            class="form-select"
-                            id="categorySelect">
-                        <option value="0">Select category</option>
-                    </select>
-
-                    <span asp-validation-for="CategoryId"
-                          class="text-danger"></span>
-                </div>
-
-                <div class="ft-field">
-                    <label asp-for="Amount"
-                           class="form-label"></label>
-
-                    <input asp-for="Amount"
-                           type="number"
-                           min="0.01"
-                           step="0.01"
-                           class="form-control" />
-
-                    <span asp-validation-for="Amount"
-                          class="text-danger"></span>
-                </div>
-
-                <div class="ft-field">
-                    <label asp-for="TransactionDate"
-                           class="form-label"></label>
-
-                    <input asp-for="TransactionDate"
-                           type="date"
-                           class="form-control" />
-
-                    <span asp-validation-for="TransactionDate"
-                          class="text-danger"></span>
-                </div>
-
-                <div class="ft-field">
-                    <label asp-for="Note"
-                           class="form-label"></label>
-
-                    <textarea asp-for="Note"
-                              class="form-control"
-                              rows="3"></textarea>
-
-                    <span asp-validation-for="Note"
-                          class="text-danger"></span>
-                </div>
-
-                <button type="submit"
-                        class="btn btn-primary">
-                    Save Transaction
-                </button>
-
-                <a asp-action="Index"
-                   class="btn btn-secondary">
-                    Cancel
-                </a>
-
-            </form>
+            <div class="ft-field ft-field-full">
+                <label asp-for="Note">Note <span class="ft-muted">(optional)</span></label>
+                <textarea asp-for="Note" class="ft-textarea" rows="3" maxlength="500" placeholder="What was it for?"></textarea>
+                <span asp-validation-for="Note"></span>
+            </div>
         </div>
-    </div>
+
+        <div class="ft-form-actions">
+            <button type="submit" class="ft-btn ft-btn-primary">Save transaction</button>
+            <a asp-action="Index" class="ft-btn ft-btn-ghost">Cancel</a>
+        </div>
+    </form>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 
     <script>
-        const typeSelect = document.getElementById("transactionType");
+        const typeInputs = document.querySelectorAll('input[name="Type"]');
         const categorySelect = document.getElementById("categorySelect");
+        const categoriesUrl = '@Url.Action("GetCategoriesByType", "Transactions")';
 
-        typeSelect.addEventListener("change", async function () {
-            categorySelect.replaceChildren(new Option("Loading...", "0"));
-            categorySelect.disabled = true;
+        typeInputs.forEach((input) => {
+            input.addEventListener("change", async () => {
+                if (!input.checked) return;
 
-            try {
-                const url = '@Url.Action("GetCategoriesByType", "Transactions")';
-                const response = await fetch(
-                    `${url}?type=${encodeURIComponent(typeSelect.value)}`
-                );
+                categorySelect.replaceChildren(new Option("Loading…", "0"));
+                categorySelect.disabled = true;
 
-                if (!response.ok) {
-                    throw new Error("Unable to load categories");
-                }
-
-                const categories = await response.json();
-
-                categorySelect.replaceChildren(
-                    new Option("Select category", "0")
-                );
-
-                for (const category of categories) {
-                    categorySelect.add(
-                        new Option(category.name, category.id)
+                try {
+                    const response = await fetch(
+                        `${categoriesUrl}?type=${encodeURIComponent(input.value)}`
                     );
+
+                    if (!response.ok) {
+                        throw new Error("Unable to load categories");
+                    }
+
+                    const categories = await response.json();
+
+                    categorySelect.replaceChildren(new Option("Select category", "0"));
+
+                    for (const category of categories) {
+                        categorySelect.add(new Option(category.name, category.id));
+                    }
+                } catch {
+                    categorySelect.replaceChildren(new Option("Could not load categories", "0"));
+                } finally {
+                    categorySelect.disabled = false;
                 }
-            } catch {
-                categorySelect.replaceChildren(
-                    new Option("Could not load categories", "0")
-                );
-            } finally {
-                categorySelect.disabled = false;
-            }
+            });
         });
     </script>
 }

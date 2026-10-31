@@ -1,92 +1,57 @@
-﻿@model FinTrack.Web.ViewModels.Auth.RegisterViewModel
+@model FinTrack.Web.ViewModels.Auth.RegisterViewModel
 
 @{
-    ViewData["Title"] = "Create Account";
+    ViewData["Title"] = "Create account";
 }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
+<div class="ft-auth">
+    <partial name="_AuthAside" />
 
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-
-                    <h2 class="text-center mb-2">
-                        Create Account
-                    </h2>
-
-                    <p class="text-muted text-center mb-4">
-                        Start managing your finances with FinTrack.
-                    </p>
-
-                    <form asp-controller="Auth"
-                          asp-action="Register"
-                          method="post">
-
-                        <div asp-validation-summary="ModelOnly"
-                             class="text-danger mb-3"></div>
-
-                        <div class="mb-3">
-                            <label asp-for="FullName"
-                                   class="form-label"></label>
-
-                            <input asp-for="FullName"
-                                   class="form-control" />
-
-                            <span asp-validation-for="FullName"
-                                  class="text-danger"></span>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="Email"
-                                   class="form-label"></label>
-
-                            <input asp-for="Email"
-                                   class="form-control" />
-
-                            <span asp-validation-for="Email"
-                                  class="text-danger"></span>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="Password"
-                                   class="form-label"></label>
-
-                            <input asp-for="Password"
-                                   class="form-control" />
-
-                            <span asp-validation-for="Password"
-                                  class="text-danger"></span>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="ConfirmPassword"
-                                   class="form-label"></label>
-
-                            <input asp-for="ConfirmPassword"
-                                   class="form-control" />
-
-                            <span asp-validation-for="ConfirmPassword"
-                                  class="text-danger"></span>
-                        </div>
-
-                        <button type="submit"
-                                class="btn btn-primary w-100">
-                            Create Account
-                        </button>
-                    </form>
-
-                    <p class="text-center mt-3 mb-0">
-                        Already have an account?
-                        <a asp-controller="Auth"
-                           asp-action="Login">
-                            Sign in
-                        </a>
-                    </p>
-
-                </div>
-            </div>
+    <div class="ft-auth-form">
+        <div style="display:flex;flex-direction:column;gap:6px">
+            <h1>Create your account</h1>
+            <p class="ft-muted">It takes less than a minute.</p>
         </div>
+
+        <form asp-controller="Auth"
+              asp-action="Register"
+              method="post"
+              class="ft-auth-fields">
+
+            <div asp-validation-summary="ModelOnly"></div>
+
+            <div class="ft-field">
+                <label asp-for="FullName">Full name</label>
+                <input asp-for="FullName" class="ft-input" autocomplete="name" />
+                <span asp-validation-for="FullName"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="Email">Email</label>
+                <input asp-for="Email" class="ft-input" autocomplete="email" placeholder="you@example.com" />
+                <span asp-validation-for="Email"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="Password">Password</label>
+                <input asp-for="Password" class="ft-input" autocomplete="new-password" />
+                <span class="ft-hint">At least 8 characters, with an uppercase letter, a lowercase letter and a number.</span>
+                <span asp-validation-for="Password"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="ConfirmPassword">Confirm password</label>
+                <input asp-for="ConfirmPassword" class="ft-input" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword"></span>
+            </div>
+
+            <button type="submit" class="ft-btn ft-btn-primary ft-btn-block">Create account</button>
+        </form>
+
+        <p class="ft-auth-switch">
+            Already have an account?
+            <a asp-controller="Auth" asp-action="Login">Sign in</a>
+        </p>
     </div>
 </div>
 

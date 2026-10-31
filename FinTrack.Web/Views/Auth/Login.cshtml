@@ -1,81 +1,63 @@
-﻿@model FinTrack.Web.ViewModels.Auth.LoginViewModel
+@model FinTrack.Web.ViewModels.Auth.LoginViewModel
 
 @{
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "Sign in";
 }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
+<div class="ft-auth">
+    <partial name="_AuthAside" />
 
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-
-                    <h2 class="text-center mb-2">
-                        Welcome Back
-                    </h2>
-
-                    <p class="text-muted text-center mb-4">
-                        Sign in to your FinTrack account.
-                    </p>
-
-                    <form asp-controller="Auth"
-                          asp-action="Login"
-                          asp-route-returnUrl="@ViewData["ReturnUrl"]"
-                          method="post">
-
-                        <div asp-validation-summary="ModelOnly"
-                             class="text-danger mb-3"></div>
-
-                        <div class="mb-3">
-                            <label asp-for="Email"
-                                   class="form-label"></label>
-
-                            <input asp-for="Email"
-                                   class="form-control"
-                                   autocomplete="email" />
-
-                            <span asp-validation-for="Email"
-                                  class="text-danger"></span>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="Password"
-                                   class="form-label"></label>
-
-                            <input asp-for="Password"
-                                   class="form-control"
-                                   autocomplete="current-password" />
-
-                            <span asp-validation-for="Password"
-                                  class="text-danger"></span>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input asp-for="RememberMe"
-                                   class="form-check-input" />
-
-                            <label asp-for="RememberMe"
-                                   class="form-check-label"></label>
-                        </div>
-
-                        <button type="submit"
-                                class="btn btn-primary w-100">
-                            Login
-                        </button>
-                    </form>
-
-                    <p class="text-center mt-3 mb-0">
-                        Don't have an account?
-                        <a asp-controller="Auth"
-                           asp-action="Register">
-                            Create Account
-                        </a>
-                    </p>
-
-                </div>
-            </div>
+    <div class="ft-auth-form">
+        <div style="display:flex;flex-direction:column;gap:6px">
+            <h1>Welcome back</h1>
+            <p class="ft-muted">Sign in to see where your money stands.</p>
         </div>
+
+        <form asp-controller="Auth"
+              asp-action="Login"
+              asp-route-returnUrl="@ViewData["ReturnUrl"]"
+              method="post"
+              class="ft-auth-fields">
+
+            <div asp-validation-summary="ModelOnly"></div>
+
+            @if (ViewData["UnconfirmedEmail"] is string unconfirmedEmail)
+            {
+                <div class="ft-alert ft-alert-info">
+                    <span>
+                        Didn't get the email?
+                        <a asp-action="ResendConfirmation" asp-route-email="@unconfirmedEmail">Send it again</a>
+                    </span>
+                </div>
+            }
+
+            <div class="ft-field">
+                <label asp-for="Email">Email</label>
+                <input asp-for="Email" class="ft-input" autocomplete="email" placeholder="you@example.com" />
+                <span asp-validation-for="Email"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="Password">Password</label>
+                <input asp-for="Password" class="ft-input" autocomplete="current-password" />
+                <span asp-validation-for="Password"></span>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px">
+                <label class="ft-check">
+                    <input asp-for="RememberMe" />
+                    Keep me signed in
+                </label>
+                <a asp-action="ForgotPassword" style="font-size:14px">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="ft-btn ft-btn-primary ft-btn-block">Sign in</button>
+        </form>
+
+        <p class="ft-auth-switch">
+            New to FinTrack?
+            <a asp-controller="Auth" asp-action="Register">Create an account</a>
+        </p>
     </div>
 </div>
 

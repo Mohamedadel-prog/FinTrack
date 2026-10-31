@@ -2,7 +2,6 @@
 using FinTrack.Application.Accounts.DTOs;
 using FinTrack.Application.Accounts.Interfaces;
 using FinTrack.Domain.Entities;
-using FinTrack.Domain.Enums;
 using FinTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +25,8 @@ public sealed class AccountService : IAccountService
             userId,
             request.Name,
             request.Type,
-            request.OpeningBalance);
+            request.OpeningBalance,
+            request.Currency);
 
         _context.Accounts.Add(account);
 
@@ -35,61 +35,15 @@ public sealed class AccountService : IAccountService
         return account.Id;
     }
 
-
-    public async Task<IReadOnlyList<AccountDto>> GetAllAsync(
+    public Task<IReadOnlyList<AccountDto>> GetAllAsync(
         string userId,
-        CancellationToken cancellationToken = default)
-    {
-        var accounts = await _context.Accounts
-            .AsNoTracking()
-            .Where(a =>
-                a.UserId == userId &&
-                !a.IsArchived)
-            .OrderBy(a => a.Name)
-            .ToListAsync(cancellationToken);
+        CancellationToken cancellationToken = default) =>
+        GetListAsync(userId, archived: false, cancellationToken);
 
-        if (accounts.Count == 0)
-            return [];
-
-        var accountIds = accounts.Select(a => a.Id).ToArray();
-
-        var movements = await _context.Transactions
-            .AsNoTracking()
-            .Where(t =>
-                t.UserId == userId &&
-                !t.IsDeleted &&
-                accountIds.Contains(t.AccountId))
-            .GroupBy(t => t.AccountId)
-            .Select(g => new
-            {
-                AccountId = g.Key,
-                NetAmount = g.Sum(t =>
-                    t.Type == TransactionType.Income
-                        ? t.Amount
-                        : -t.Amount)
-            })
-            .ToDictionaryAsync(
-                x => x.AccountId,
-                x => x.NetAmount,
-                cancellationToken);
-
-        return accounts.Select(account =>
-        {
-            movements.TryGetValue(
-                account.Id,
-                out var netAmount);
-
-            return new AccountDto(
-                account.Id,
-                account.Name,
-                account.Type,
-                account.OpeningBalance,
-                account.Currency,
-                account.OpeningBalance + netAmount);
-        }).ToList();
-    }
-
-
+    public Task<IReadOnlyList<AccountDto>> GetArchivedAsync(
+        string userId,
+        CancellationToken cancellationToken = default) =>
+        GetListAsync(userId, archived: true, cancellationToken);
 
     public async Task<AccountDto?> GetByIdAsync(
         string userId,
@@ -107,33 +61,16 @@ public sealed class AccountService : IAccountService
         if (account is null)
             return null;
 
-        var netAmount = await _context.Transactions
-            .AsNoTracking()
-            .Where(t =>
-                t.AccountId == accountId &&
-                t.UserId == userId &&
-                !t.IsDeleted)
-            .SumAsync(t =>
-                t.Type == TransactionType.Income
-                    ? t.Amount
-                    : -t.Amount,
-                cancellationToken);
+        var movements = await AccountBalances.GetNetMovementsAsync(
+            _context, userId, [account.Id], cancellationToken);
 
-        return new AccountDto(
-            account.Id,
-            account.Name,
-            account.Type,
-            account.OpeningBalance,
-            account.Currency,
-            account.OpeningBalance + netAmount);
+        return ToDto(account, movements);
     }
-
 
     public async Task<bool> UpdateAsync(
         string userId,
         int accountId,
-        string name,
-        AccountType type,
+        UpdateAccountRequest request,
         CancellationToken cancellationToken = default)
     {
         var account = await _context.Accounts
@@ -146,8 +83,31 @@ public sealed class AccountService : IAccountService
         if (account is null)
             return false;
 
-        account.Rename(name);
-        account.ChangeType(type);
+        var currency = request.Currency?.Trim().ToUpperInvariant();
+
+        if (currency != account.Currency)
+        {
+            // Changing the currency would silently reinterpret every amount
+            // already recorded against this account.
+            var hasActivity =
+                await _context.Transactions.AnyAsync(
+                    t => t.AccountId == accountId && !t.IsDeleted,
+                    cancellationToken) ||
+                await _context.Transfers.AnyAsync(
+                    t => (t.FromAccountId == accountId ||
+                          t.ToAccountId == accountId) &&
+                         !t.IsDeleted,
+                    cancellationToken);
+
+            if (hasActivity)
+                throw new InvalidOperationException(
+                    "The currency can't be changed once the account has transactions or transfers.");
+
+            account.ChangeCurrency(request.Currency!);
+        }
+
+        account.Rename(request.Name);
+        account.ChangeType(request.Type);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -176,4 +136,63 @@ public sealed class AccountService : IAccountService
         return true;
     }
 
+    public async Task<bool> UnarchiveAsync(
+        string userId,
+        int accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var account = await _context.Accounts
+            .FirstOrDefaultAsync(
+                a => a.Id == accountId &&
+                     a.UserId == userId &&
+                     a.IsArchived,
+                cancellationToken);
+
+        if (account is null)
+            return false;
+
+        account.Unarchive();
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    private async Task<IReadOnlyList<AccountDto>> GetListAsync(
+        string userId,
+        bool archived,
+        CancellationToken cancellationToken)
+    {
+        var accounts = await _context.Accounts
+            .AsNoTracking()
+            .Where(a =>
+                a.UserId == userId &&
+                a.IsArchived == archived)
+            .OrderBy(a => a.Name)
+            .ToListAsync(cancellationToken);
+
+        if (accounts.Count == 0)
+            return [];
+
+        var movements = await AccountBalances.GetNetMovementsAsync(
+            _context,
+            userId,
+            accounts.Select(a => a.Id).ToArray(),
+            cancellationToken);
+
+        return accounts
+            .Select(account => ToDto(account, movements))
+            .ToList();
+    }
+
+    private static AccountDto ToDto(
+        Account account,
+        IReadOnlyDictionary<int, decimal> movements) =>
+        new(
+            account.Id,
+            account.Name,
+            account.Type,
+            account.OpeningBalance,
+            account.Currency,
+            account.OpeningBalance + movements.GetValueOrDefault(account.Id));
 }

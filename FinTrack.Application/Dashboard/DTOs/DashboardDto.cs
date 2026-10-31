@@ -7,9 +7,18 @@ public sealed record DashboardDto(
     decimal MonthlyExpenses,
     decimal NetCashFlow,
     int ActiveAccounts,
+    IReadOnlyList<AccountBalanceDto> Accounts,
     IReadOnlyList<MonthlyFinanceDto> MonthlyChart,
     IReadOnlyList<CategoryExpenseDto> ExpensesByCategory,
-    IReadOnlyList<RecentTransactionDto> RecentTransactions
+    IReadOnlyList<RecentTransactionDto> RecentTransactions,
+    string Currency,
+    IReadOnlyList<string> Currencies
+);
+
+public sealed record AccountBalanceDto(
+    int Id,
+    string Name,
+    decimal Balance
 );
 
 public sealed record MonthlyFinanceDto(

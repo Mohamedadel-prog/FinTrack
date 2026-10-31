@@ -18,15 +18,31 @@ public class AccountsController : Controller
         _accountService = accountService;
     }
 
+    private string CurrentUserId =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? throw new UnauthorizedAccessException();
+
     [HttpGet]
     public async Task<IActionResult> Index(
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(
-            ClaimTypes.NameIdentifier)!;
-
         var accounts = await _accountService.GetAllAsync(
-            userId, cancellationToken);
+            CurrentUserId, cancellationToken);
+
+        var archived = await _accountService.GetArchivedAsync(
+            CurrentUserId, cancellationToken);
+
+        ViewData["ArchivedCount"] = archived.Count;
+
+        return View(accounts);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Archived(
+        CancellationToken cancellationToken)
+    {
+        var accounts = await _accountService.GetArchivedAsync(
+            CurrentUserId, cancellationToken);
 
         return View(accounts);
     }
@@ -46,21 +62,32 @@ public class AccountsController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var userId = User.FindFirstValue(
-            ClaimTypes.NameIdentifier)!;
+        try
+        {
+            var request = new CreateAccountRequest(
+                model.Name,
+                model.Type,
+                model.OpeningBalance,
+                model.Currency);
 
-        var request = new CreateAccountRequest(
-            model.Name,
-            model.Type,
-            model.OpeningBalance);
+            await _accountService.CreateAsync(
+                CurrentUserId, request, cancellationToken);
 
-        await _accountService.CreateAsync(
-            userId, request, cancellationToken);
+            TempData["SuccessMessage"] =
+                "Account created successfully.";
 
-        TempData["SuccessMessage"] =
-            "Account created successfully.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+        }
 
-        return RedirectToAction(nameof(Index));
+        return View(model);
     }
 
     [HttpGet]
@@ -68,11 +95,8 @@ public class AccountsController : Controller
         int id,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(
-            ClaimTypes.NameIdentifier)!;
-
         var account = await _accountService.GetByIdAsync(
-            userId, id, cancellationToken);
+            CurrentUserId, id, cancellationToken);
 
         if (account is null)
             return NotFound();
@@ -81,7 +105,8 @@ public class AccountsController : Controller
         {
             Id = account.Id,
             Name = account.Name,
-            Type = account.Type
+            Type = account.Type,
+            Currency = account.Currency
         };
 
         return View(model);
@@ -100,23 +125,35 @@ public class AccountsController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var userId = User.FindFirstValue(
-            ClaimTypes.NameIdentifier)!;
+        try
+        {
+            var updated = await _accountService.UpdateAsync(
+                CurrentUserId,
+                id,
+                new UpdateAccountRequest(
+                    model.Name,
+                    model.Type,
+                    model.Currency),
+                cancellationToken);
 
-        var updated = await _accountService.UpdateAsync(
-            userId,
-            id,
-            model.Name,
-            model.Type,
-            cancellationToken);
+            if (!updated)
+                return NotFound();
 
-        if (!updated)
-            return NotFound();
+            TempData["SuccessMessage"] =
+                "Account updated successfully.";
 
-        TempData["SuccessMessage"] =
-            "Account updated successfully.";
+            return RedirectToAction(nameof(Index));
+        }
+        catch (ArgumentException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+        }
 
-        return RedirectToAction(nameof(Index));
+        return View(model);
     }
 
     [HttpPost]
@@ -125,20 +162,33 @@ public class AccountsController : Controller
         int id,
         CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(
-            ClaimTypes.NameIdentifier)!;
-
         var archived = await _accountService.ArchiveAsync(
-            userId, id, cancellationToken);
+            CurrentUserId, id, cancellationToken);
 
         if (!archived)
             return NotFound();
 
         TempData["SuccessMessage"] =
-            "Account archived successfully.";
+            "Account archived. You can restore it from Archived accounts.";
 
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unarchive(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var restored = await _accountService.UnarchiveAsync(
+            CurrentUserId, id, cancellationToken);
 
+        if (!restored)
+            return NotFound();
+
+        TempData["SuccessMessage"] =
+            "Account restored successfully.";
+
+        return RedirectToAction(nameof(Index));
+    }
 }

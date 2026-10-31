@@ -9,6 +9,9 @@ using FinTrack.Infrastructure.Services;
 using FinTrack.Application.Categories.Interfaces;
 using FinTrack.Application.Transactions.Interfaces;
 using FinTrack.Application.Dashboard.Interfaces;
+using FinTrack.Application.Transfers.Interfaces;
+using FinTrack.Application.Common.Interfaces;
+using FinTrack.Infrastructure.Email;
 
 namespace FinTrack.Infrastructure;
 
@@ -47,9 +50,12 @@ public static class DependencyInjection
                 options.Password.RequireLowercase = true;
 
                 options.User.RequireUniqueEmail = true;
+
+                options.SignIn.RequireConfirmedEmail = true;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
 
         services.ConfigureApplicationCookie(options =>
         {
@@ -68,6 +74,11 @@ public static class DependencyInjection
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<ITransactionService, TransactionService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<ITransferService, TransferService>();
+
+        services.Configure<EmailOptions>(
+            configuration.GetSection(EmailOptions.SectionName));
+        services.AddTransient<IEmailSender, SmtpEmailSender>();
         return services;
 
     }

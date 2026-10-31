@@ -38,4 +38,7 @@ public class CreateTransactionViewModel
     public List<SelectListItem> Accounts { get; set; } = [];
 
     public List<SelectListItem> Categories { get; set; } = [];
+
+    /// <summary>Account id → currency code, used to label the amount field.</summary>
+    public Dictionary<int, string> AccountCurrencies { get; set; } = [];
 }

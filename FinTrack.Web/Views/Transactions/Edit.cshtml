@@ -1,113 +1,65 @@
-﻿@model FinTrack.Web.ViewModels.Transactions.EditTransactionViewModel
+@model FinTrack.Web.ViewModels.Transactions.EditTransactionViewModel
+@using FinTrack.Domain.Enums
 
 @{
-    ViewData["Title"] = "Edit Transaction";
+    ViewData["Title"] = "Edit transaction";
+    ViewData["Subtitle"] = "Account and type are fixed once a transaction is recorded";
+    ViewData["HideNewTransaction"] = true;
+
+    var isIncome = Model.Type == TransactionType.Income;
 }
 
 <div class="ft-form-page">
+    <form asp-action="Edit"
+          asp-route-id="@Model.Id"
+          method="post"
+          class="ft-card ft-form-card">
 
-    <h2>Edit Transaction</h2>
+        <input asp-for="Id" type="hidden" />
 
-    <p class="text-muted">
-        Update your transaction details.
-    </p>
+        <div asp-validation-summary="ModelOnly"></div>
 
-    <div class="ft-form-card">
-        <div class="card-body">
-
-            <form asp-action="Edit"
-                  asp-route-id="@Model.Id"
-                  method="post">
-
-                <input asp-for="Id" type="hidden" />
-
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger mb-3"></div>
-
-                <div class="ft-field">
-                    <label class="form-label">Account</label>
-
-                    <input value="@Model.AccountName"
-                           class="form-control"
-                           disabled />
-                </div>
-
-                <div class="ft-field">
-                    <label class="form-label">Transaction Type</label>
-
-                    <input value="@Model.Type"
-                           class="form-control"
-                           disabled />
-                </div>
-
-                <div class="ft-field">
-                    <label asp-for="CategoryId"
-                           class="form-label">
-                        Category
-                    </label>
-
-                    <select asp-for="CategoryId"
-                            asp-items="Model.Categories"
-                            class="form-select">
-                        <option value="0">Select category</option>
-                    </select>
-
-                    <span asp-validation-for="CategoryId"
-                          class="text-danger"></span>
-                </div>
-
-                <div class="ft-field">
-                    <label asp-for="Amount"
-                           class="form-label"></label>
-
-                    <input asp-for="Amount"
-                           class="form-control"
-                           type="number"
-                           min="0.01"
-                           step="0.01" />
-
-                    <span asp-validation-for="Amount"
-                          class="text-danger"></span>
-                </div>
-
-                <div class="ft-field">
-                    <label asp-for="TransactionDate"
-                           class="form-label"></label>
-
-                    <input asp-for="TransactionDate"
-                           type="date"
-                           class="form-control" />
-
-                    <span asp-validation-for="TransactionDate"
-                          class="text-danger"></span>
-                </div>
-
-                <div class="ft-field">
-                    <label asp-for="Note"
-                           class="form-label"></label>
-
-                    <textarea asp-for="Note"
-                              class="form-control"
-                              rows="3"></textarea>
-
-                    <span asp-validation-for="Note"
-                          class="text-danger"></span>
-                </div>
-
-                <button type="submit"
-                        class="btn btn-primary">
-                    Save Changes
-                </button>
-
-                <a asp-action="Index"
-                   class="btn btn-secondary">
-                    Cancel
-                </a>
-
-            </form>
-
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+            <span class="ft-pill @(isIncome ? "ft-pill-income" : "ft-pill-expense")">@(isIncome ? "Income" : "Expense")</span>
+            <span class="ft-pill ft-pill-neutral">@Model.AccountName</span>
         </div>
-    </div>
+
+        <div class="ft-form-grid">
+            <div class="ft-field ft-field-full">
+                <label asp-for="Amount">Amount</label>
+                <div class="ft-input-group">
+                    <input asp-for="Amount" type="number" min="0.01" step="0.01" class="ft-input ft-num" />
+                    <span class="ft-input-suffix">@Model.Currency</span>
+                </div>
+                <span asp-validation-for="Amount"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="CategoryId">Category</label>
+                <select asp-for="CategoryId" asp-items="Model.Categories" class="ft-select">
+                    <option value="0">Select category</option>
+                </select>
+                <span asp-validation-for="CategoryId"></span>
+            </div>
+
+            <div class="ft-field">
+                <label asp-for="TransactionDate">Date</label>
+                <input asp-for="TransactionDate" type="date" class="ft-input" />
+                <span asp-validation-for="TransactionDate"></span>
+            </div>
+
+            <div class="ft-field ft-field-full">
+                <label asp-for="Note">Note <span class="ft-muted">(optional)</span></label>
+                <textarea asp-for="Note" class="ft-textarea" rows="3" maxlength="500"></textarea>
+                <span asp-validation-for="Note"></span>
+            </div>
+        </div>
+
+        <div class="ft-form-actions">
+            <button type="submit" class="ft-btn ft-btn-primary">Save changes</button>
+            <a asp-action="Index" class="ft-btn ft-btn-ghost">Cancel</a>
+        </div>
+    </form>
 </div>
 
 @section Scripts {

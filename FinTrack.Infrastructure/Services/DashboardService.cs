@@ -1,6 +1,7 @@
 ﻿
 using FinTrack.Application.Dashboard.DTOs;
 using FinTrack.Application.Dashboard.Interfaces;
+using FinTrack.Domain.Common;
 using FinTrack.Domain.Enums;
 using FinTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -19,19 +20,44 @@ public sealed class DashboardService : IDashboardService
     public async Task<DashboardDto> GetDashboardAsync(
         string userId,
         DateTime today,
+        string? currency = null,
         CancellationToken cancellationToken = default)
     {
         var monthStart = new DateTime(today.Year, today.Month, 1);
         var nextMonth = monthStart.AddMonths(1);
         var chartStart = monthStart.AddMonths(-5);
 
+        // Amounts in different currencies can't be summed, so the dashboard
+        // shows one currency at a time: the requested one, or the currency
+        // most of the user's active accounts use.
+        var currencies = await _context.Accounts
+            .AsNoTracking()
+            .Where(a => a.UserId == userId && !a.IsArchived)
+            .GroupBy(a => a.Currency)
+            .Select(g => new { Currency = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Currency)
+            .Select(x => x.Currency)
+            .ToListAsync(cancellationToken);
+
+        var selectedCurrency =
+            currencies.FirstOrDefault(c =>
+                string.Equals(c, currency, StringComparison.OrdinalIgnoreCase))
+            ?? currencies.FirstOrDefault()
+            ?? Currencies.Default;
+
         // Active accounts and opening balances
         var accounts = await _context.Accounts
             .AsNoTracking()
-            .Where(a => a.UserId == userId && !a.IsArchived)
+            .Where(a =>
+                a.UserId == userId &&
+                !a.IsArchived &&
+                a.Currency == selectedCurrency)
+            .OrderBy(a => a.Name)
             .Select(a => new
             {
                 a.Id,
+                a.Name,
                 a.OpeningBalance
             })
             .ToListAsync(cancellationToken);
@@ -40,39 +66,36 @@ public sealed class DashboardService : IDashboardService
             .Select(a => a.Id)
             .ToArray();
 
-        var openingTotal = accounts.Sum(a => a.OpeningBalance);
-
-        // All active transactions for current user's active accounts
-        var movements = await _context.Transactions
+        // Non-deleted transactions that belong to the user's active accounts.
+        // Every figure below is built on this, so archived accounts are
+        // excluded consistently from balance, monthly totals and charts.
+        var activeTransactions = _context.Transactions
             .AsNoTracking()
             .Where(t =>
                 t.UserId == userId &&
                 !t.IsDeleted &&
-                activeAccountIds.Contains(t.AccountId))
-            .GroupBy(t => t.Type)
-            .Select(g => new
-            {
-                Type = g.Key,
-                Total = g.Sum(t => t.Amount)
-            })
-            .ToListAsync(cancellationToken);
+                activeAccountIds.Contains(t.AccountId));
 
-        var totalIncome = movements
-            .Where(x => x.Type == TransactionType.Income)
-            .Sum(x => x.Total);
+        // Net movement per account (transactions and transfers)
+        // -> current balance per account
+        var netByAccount = await AccountBalances.GetNetMovementsAsync(
+            _context,
+            userId,
+            activeAccountIds,
+            cancellationToken);
 
-        var totalExpenses = movements
-            .Where(x => x.Type == TransactionType.Expense)
-            .Sum(x => x.Total);
+        var accountBalances = accounts
+            .Select(a => new AccountBalanceDto(
+                a.Id,
+                a.Name,
+                a.OpeningBalance + netByAccount.GetValueOrDefault(a.Id)))
+            .ToList();
 
-        var totalBalance = openingTotal + totalIncome - totalExpenses;
+        var totalBalance = accountBalances.Sum(a => a.Balance);
 
         // Current month income and expenses
-        var monthlyTotals = await _context.Transactions
-            .AsNoTracking()
+        var monthlyTotals = await activeTransactions
             .Where(t =>
-                t.UserId == userId &&
-                !t.IsDeleted &&
                 t.TransactionDate >= monthStart &&
                 t.TransactionDate < nextMonth)
             .GroupBy(t => t.Type)
@@ -92,11 +115,8 @@ public sealed class DashboardService : IDashboardService
             .Sum(x => x.Total);
 
         // Last six months
-        var chartRows = await _context.Transactions
-            .AsNoTracking()
+        var chartRows = await activeTransactions
             .Where(t =>
-                t.UserId == userId &&
-                !t.IsDeleted &&
                 t.TransactionDate >= chartStart &&
                 t.TransactionDate < nextMonth)
             .GroupBy(t => new
@@ -137,12 +157,10 @@ public sealed class DashboardService : IDashboardService
 
         // Expenses by category for the current month
         var expensesByCategory = await (
-            from t in _context.Transactions.AsNoTracking()
+            from t in activeTransactions
             join c in _context.Categories.AsNoTracking()
                 on t.CategoryId equals c.Id
-            where t.UserId == userId
-                  && c.UserId == userId
-                  && !t.IsDeleted
+            where c.UserId == userId
                   && t.Type == TransactionType.Expense
                   && t.TransactionDate >= monthStart
                   && t.TransactionDate < nextMonth
@@ -155,15 +173,13 @@ public sealed class DashboardService : IDashboardService
 
         // Last five transactions
         var recentTransactions = await (
-            from t in _context.Transactions.AsNoTracking()
+            from t in activeTransactions
             join a in _context.Accounts.AsNoTracking()
                 on t.AccountId equals a.Id
             join c in _context.Categories.AsNoTracking()
                 on t.CategoryId equals c.Id
-            where t.UserId == userId
-                  && a.UserId == userId
+            where a.UserId == userId
                   && c.UserId == userId
-                  && !t.IsDeleted
             orderby t.TransactionDate descending, t.Id descending
             select new RecentTransactionDto(
                 t.Id,
@@ -182,9 +198,12 @@ public sealed class DashboardService : IDashboardService
             monthlyExpenses,
             monthlyIncome - monthlyExpenses,
             accounts.Count,
+            accountBalances,
             monthlyChart,
             expensesByCategory,
-            recentTransactions
+            recentTransactions,
+            selectedCurrency,
+            currencies
         );
     }
 }

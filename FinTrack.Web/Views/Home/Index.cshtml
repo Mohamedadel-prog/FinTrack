@@ -4,6 +4,16 @@
 @{
     ViewData["Title"] = "Dashboard";
 
+    var fullName = User.FindFirst(FinTrack.Infrastructure.Identity.FinTrackClaimTypes.FullName)?.Value;
+    var firstName = string.IsNullOrWhiteSpace(fullName)
+        ? null
+        : fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+
+    var hour = DateTime.Now.Hour;
+    var greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+    var inv = CultureInfo.InvariantCulture;
+
     var maxChartValue = Math.Max(
         1m,
         Model.MonthlyChart
@@ -11,211 +21,240 @@
             .DefaultIfEmpty(0m)
             .Max());
 
-    var maxCategoryExpense = Math.Max(
-        1m,
-        Model.ExpensesByCategory
-            .Select(c => c.Amount)
-            .DefaultIfEmpty(0m)
-            .Max());
+    // Top 5 categories + "Other" so the donut stays readable
+    string[] tones = { "#5EE6A8", "#4BA3F5", "#F59E7A", "#C89BF7", "#F2D46B", "#5B677A" };
+
+    var topCategories = Model.ExpensesByCategory.Take(5).ToList();
+    var otherAmount = Model.ExpensesByCategory.Skip(5).Sum(c => c.Amount);
+
+    var donutItems = topCategories
+        .Select(c => (Name: c.Category, Amount: c.Amount))
+        .ToList();
+
+    if (otherAmount > 0)
+    {
+        donutItems.Add(("Other", otherAmount));
+    }
+
+    var totalSpent = donutItems.Sum(c => c.Amount);
+    var stops = new List<string>();
+    var cursor = 0m;
+
+    for (var i = 0; i < donutItems.Count; i++)
+    {
+        var from = cursor;
+        cursor += totalSpent == 0 ? 0 : donutItems[i].Amount / totalSpent * 100m;
+        stops.Add($"{tones[i % tones.Length]} {from.ToString("0.##", inv)}% {cursor.ToString("0.##", inv)}%");
+    }
+
+    var donutGradient = stops.Count > 0
+        ? $"conic-gradient({string.Join(", ", stops)})"
+        : "var(--ft-surface)";
+
+    string Compact(decimal value) =>
+        Math.Abs(value) >= 1_000_000m ? (value / 1_000_000m).ToString("0.#", inv) + "M"
+        : Math.Abs(value) >= 1_000m ? (value / 1_000m).ToString("0.#", inv) + "k"
+        : value.ToString("0", inv);
+
+    var spentShare = Model.MonthlyIncome > 0
+        ? (int)Math.Round(Model.MonthlyExpenses / Model.MonthlyIncome * 100m)
+        : (int?)null;
+
+    var balanceWhole = Math.Truncate(Model.TotalBalance);
+    var balanceCents = Math.Abs(Model.TotalBalance - balanceWhole).ToString(".00", inv);
 }
 
-<div class="ft-analytics-page">
-
-    <div class="ft-page-header">
-        <div>
-            <span class="ft-eyebrow">FINANCIAL OVERVIEW</span>
-            <h1>Financial Dashboard</h1>
-            <p>Your money, organized in one place.</p>
-        </div>
-
-        <a asp-controller="Transactions"
-           asp-action="Create"
-           class="btn btn-primary">
-            + Add Transaction
+@section PageHeader {
+    <div class="ft-welcome">
+        <a class="ft-brand" asp-controller="Home" asp-action="Index">
+            <img src="~/favicon.png" alt="" width="34" height="34" class="ft-brand-img" asp-append-version="true" />
+            FinTrack
         </a>
+        <h1>@(firstName is null ? greeting : $"{greeting}, {firstName}")</h1>
+        <span>@DateTime.Today.ToString("dddd, d MMMM yyyy") · here's where your money stands.</span>
+    </div>
+}
+
+@if (Model.Currencies.Count > 1)
+{
+    <nav class="ft-filters" aria-label="Dashboard currency">
+        @foreach (var code in Model.Currencies)
+        {
+            var isCurrent = code == Model.Currency;
+            <a class="ft-filter @(isCurrent ? "is-active" : "")"
+               asp-action="Index"
+               asp-route-currency="@code"
+               aria-current="@(isCurrent ? "page" : null)">@code</a>
+        }
+    </nav>
+}
+
+<section class="ft-stat-grid" aria-label="Summary">
+
+    <div class="ft-card ft-hero">
+        <div class="ft-stat">
+            <span class="ft-label">Total balance</span>
+            <span class="ft-num ft-hero-value @(Model.TotalBalance < 0 ? "ft-danger-text" : "")"
+                  data-count="@Model.TotalBalance.ToString(inv)" data-format="hero">
+                @(Model.TotalBalance < 0 && balanceWhole == 0 ? "-" : "")@balanceWhole.ToString("N0")<span class="ft-cents">@balanceCents</span>
+            </span>
+            <span class="ft-stat-foot">
+                @Model.Currency across @Model.ActiveAccounts active @(Model.ActiveAccounts == 1 ? "account" : "accounts")
+            </span>
+        </div>
+
+        @if (Model.Accounts.Any())
+        {
+            <div class="ft-chips">
+                @foreach (var account in Model.Accounts.Take(6))
+                {
+                    <span class="ft-chip">
+                        @account.Name <span class="ft-num">@account.Balance.ToString("N0")</span>
+                    </span>
+                }
+            </div>
+        }
+        else
+        {
+            <a asp-controller="Accounts" asp-action="Create" class="ft-btn ft-btn-ghost ft-btn-sm">Add your first account</a>
+        }
     </div>
 
-    <!-- Summary Cards -->
-    <div class="row g-3 mb-4">
-
-        <div class="col-md-6 col-xl-3">
-            <div class="ft-stat-card">
-                <span>Total Balance</span>
-                <h2>@Model.TotalBalance.ToString("N2")</h2>
-                <small>EGP · @Model.ActiveAccounts accounts</small>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-xl-3">
-            <div class="ft-stat-card">
-                <span>Monthly Income</span>
-                <h2 class="text-success">
-                    @Model.MonthlyIncome.ToString("N2")
-                </h2>
-                <small>EGP · Current month</small>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-xl-3">
-            <div class="ft-stat-card">
-                <span>Monthly Expenses</span>
-                <h2 class="text-danger">
-                    @Model.MonthlyExpenses.ToString("N2")
-                </h2>
-                <small>EGP · Current month</small>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-xl-3">
-            <div class="ft-stat-card">
-                <span>Net Cash Flow</span>
-                <h2 class="@(Model.NetCashFlow < 0 ? "text-danger" : "text-success")">
-                    @Model.NetCashFlow.ToString("N2")
-                </h2>
-                <small>EGP · Income minus expenses</small>
-            </div>
-        </div>
-
+    <div class="ft-card ft-stat">
+        <span class="ft-label">Income · @DateTime.Today.ToString("MMM")</span>
+        <span class="ft-num ft-stat-value ft-pos" data-count="@Model.MonthlyIncome.ToString(inv)" data-prefix="+">+@Model.MonthlyIncome.ToString("N2")</span>
+        <span class="ft-stat-foot">
+            Net flow
+            <span class="ft-num @(Model.NetCashFlow < 0 ? "ft-neg" : "")" data-count="@Model.NetCashFlow.ToString(inv)" data-prefix="@(Model.NetCashFlow >= 0 ? "+" : "")">
+                @(Model.NetCashFlow >= 0 ? "+" : "")@Model.NetCashFlow.ToString("N2")
+            </span>
+        </span>
     </div>
 
-    <div class="row g-4">
+    <div class="ft-card ft-stat">
+        <span class="ft-label">Expenses · @DateTime.Today.ToString("MMM")</span>
+        <span class="ft-num ft-stat-value ft-neg" data-count="@Model.MonthlyExpenses.ToString(inv)" data-prefix="−">−@Model.MonthlyExpenses.ToString("N2")</span>
+        <span class="ft-stat-foot">
+            @(spentShare is null ? "No income recorded this month" : $"{spentShare}% of income spent")
+        </span>
+    </div>
+</section>
 
-        <!-- Monthly Chart -->
-        <div class="col-xl-8">
-            <div class="ft-analytics-card">
-                <div class="ft-analytics-heading">
-                    <div>
-                        <h3>Income vs Expenses</h3>
-                        <p>Last 6 months</p>
+<div class="ft-row">
+
+    <section class="ft-card ft-col-wide">
+        <div class="ft-card-head">
+            <div>
+                <h2>Income vs expenses</h2>
+                <p>Last 6 months · @Model.Currency</p>
+            </div>
+            <div class="ft-legend">
+                <span><i class="ft-swatch ft-swatch-income"></i>Income</span>
+                <span><i class="ft-swatch ft-swatch-expense"></i>Expenses</span>
+            </div>
+        </div>
+
+        <div class="ft-bars">
+            @foreach (var month in Model.MonthlyChart)
+            {
+                var incomeHeight = month.Income / maxChartValue * 100m;
+                var expenseHeight = month.Expenses / maxChartValue * 100m;
+
+                <div class="ft-bar-group">
+                    <div class="ft-bar-track">
+                        <div class="ft-bar ft-bar-income"
+                             title="Income: @month.Income.ToString("N2") @Model.Currency"
+                             style="height:@(incomeHeight.ToString("0.##", inv))%"></div>
+                        <div class="ft-bar ft-bar-expense"
+                             title="Expenses: @month.Expenses.ToString("N2") @Model.Currency"
+                             style="height:@(expenseHeight.ToString("0.##", inv))%"></div>
+                    </div>
+                    <span class="ft-bar-label">@(month.Month.Split(' ')[0])</span>
+                </div>
+            }
+        </div>
+    </section>
+
+    <section class="ft-card ft-col-narrow">
+        <div class="ft-card-head">
+            <div>
+                <h2>Spending by category</h2>
+                <p>@DateTime.Today.ToString("MMMM")</p>
+            </div>
+        </div>
+
+        @if (!donutItems.Any())
+        {
+            <p class="ft-empty-inline">No expenses recorded this month.</p>
+        }
+        else
+        {
+            <div class="ft-donut-wrap">
+                <div class="ft-donut"
+                     role="img"
+                     aria-label="Spending by category this month"
+                     style="background:@donutGradient">
+                    <div class="ft-donut-hole">
+                        <span class="ft-num">@Compact(totalSpent)</span>
+                        <small>@Model.Currency</small>
                     </div>
                 </div>
 
-                <div class="ft-chart-legend">
-                    <span><i class="ft-legend-income"></i> Income</span>
-                    <span><i class="ft-legend-expense"></i> Expenses</span>
-                </div>
-
-                <div class="ft-month-chart">
-                    @foreach (var month in Model.MonthlyChart)
+                <ul class="ft-donut-legend">
+                    @for (var i = 0; i < donutItems.Count; i++)
                     {
-                        var incomeHeight = month.Income / maxChartValue * 100m;
-                        var expenseHeight = month.Expenses / maxChartValue * 100m;
-
-                        <div class="ft-month-group">
-                            <div class="ft-month-bars">
-                                <div class="ft-bar-income"
-                                     title="Income: @month.Income.ToString("N2") EGP"
-                                     style="height:@(incomeHeight.ToString("0.##", CultureInfo.InvariantCulture))%">
-                                </div>
-
-                                <div class="ft-bar-expense"
-                                     title="Expenses: @month.Expenses.ToString("N2") EGP"
-                                     style="height:@(expenseHeight.ToString("0.##", CultureInfo.InvariantCulture))%">
-                                </div>
-                            </div>
-
-                            <span>@month.Month</span>
-                        </div>
+                        <li>
+                            <span class="ft-dot" style="background:@tones[i % tones.Length]"></span>
+                            <span>@donutItems[i].Name</span>
+                            <span class="ft-num">@donutItems[i].Amount.ToString("N0")</span>
+                        </li>
                     }
-                </div>
+                </ul>
             </div>
-        </div>
-
-        <!-- Category Breakdown -->
-        <div class="col-xl-4">
-            <div class="ft-analytics-card">
-                <div class="ft-analytics-heading">
-                    <div>
-                        <h3>Spending by Category</h3>
-                        <p>Current month</p>
-                    </div>
-                </div>
-
-                @if (!Model.ExpensesByCategory.Any())
-                {
-                    <p class="ft-muted-message">
-                        No expenses recorded this month.
-                    </p>
-                }
-                else
-                {
-                    @foreach (var category in Model.ExpensesByCategory)
-                    {
-                        var percentage =
-                            category.Amount / maxCategoryExpense * 100m;
-
-                        <div class="ft-category-item">
-                            <div class="ft-category-label">
-                                <span>@category.Category</span>
-                                <strong>@category.Amount.ToString("N2")</strong>
-                            </div>
-
-                            <div class="ft-progress-track">
-                                <div class="ft-progress-fill"
-                                     style="width:@(percentage.ToString("0.##", CultureInfo.InvariantCulture))%">
-                                </div>
-                            </div>
-                        </div>
-                    }
-                }
-            </div>
-        </div>
-
-        <!-- Recent Transactions -->
-        <div class="col-12">
-            <div class="ft-analytics-card">
-
-                <div class="ft-analytics-heading">
-                    <div>
-                        <h3>Recent Transactions</h3>
-                        <p>Your latest financial activity</p>
-                    </div>
-
-                    <a asp-controller="Transactions"
-                       asp-action="Index"
-                       class="ft-view-all">
-                        View All →
-                    </a>
-                </div>
-
-                @if (!Model.RecentTransactions.Any())
-                {
-                    <p class="ft-muted-message">
-                        No transactions yet.
-                    </p>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table ft-data-table">
-                            <thead>
-                                <tr>
-                                    <th>Category</th>
-                                    <th>Account</th>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                @foreach (var transaction in Model.RecentTransactions)
-                                {
-                                    <tr>
-                                        <td>@transaction.Category</td>
-                                        <td>@transaction.Account</td>
-                                        <td>@transaction.Date.ToString("dd MMM yyyy")</td>
-                                        <td class="@(transaction.IsIncome ? "text-success" : "text-danger") fw-bold">
-                                            @(transaction.IsIncome ? "+" : "-")
-                                            @transaction.Amount.ToString("N2") EGP
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </div>
-        </div>
-
-    </div>
+        }
+    </section>
 </div>
+
+<section class="ft-card">
+    <div class="ft-card-head">
+        <h2>Recent transactions</h2>
+        <a asp-controller="Transactions" asp-action="Index">View all</a>
+    </div>
+
+    @if (!Model.RecentTransactions.Any())
+    {
+        <div class="ft-empty">
+            <h3>No transactions yet</h3>
+            <p>Record your first income or expense to see it here.</p>
+            <a asp-controller="Transactions" asp-action="Create" class="ft-btn ft-btn-primary">Add transaction</a>
+        </div>
+    }
+    else
+    {
+        <div class="ft-table-wrap">
+            <table class="ft-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Account</th>
+                        <th scope="col" class="ft-right">Amount (@Model.Currency)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var transaction in Model.RecentTransactions)
+                    {
+                        <tr>
+                            <td class="ft-muted">@transaction.Date.ToString("dd MMM")</td>
+                            <td class="ft-cell-main">@transaction.Category</td>
+                            <td>@transaction.Account</td>
+                            <td class="ft-right ft-num @(transaction.IsIncome ? "ft-pos" : "")">
+                                @(transaction.IsIncome ? "+" : "−")@transaction.Amount.ToString("N2")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

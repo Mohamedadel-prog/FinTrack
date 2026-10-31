@@ -1,5 +1,6 @@
 ﻿
 using System.ComponentModel.DataAnnotations;
+using FinTrack.Domain.Common;
 using FinTrack.Domain.Enums;
 
 namespace FinTrack.Web.ViewModels.Accounts;
@@ -21,4 +22,8 @@ public class CreateAccountViewModel
         "9999999999999999.99")]
     [Display(Name = "Opening Balance")]
     public decimal OpeningBalance { get; set; }
+
+    // Rendered as a <select>; the domain rejects unsupported codes.
+    [Required]
+    public string Currency { get; set; } = Currencies.Default;
 }
